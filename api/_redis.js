@@ -1,9 +1,17 @@
 // Minimal Upstash Redis REST client. The Vercel ↔ Upstash integration sets these variables.
-const URL_ = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+// The variable names can carry a custom prefix (e.g. STORAGE_KV_REST_API_URL), so match by ending.
+const pick = (...ends) => {
+  for (const end of ends) {
+    const k = Object.keys(process.env).find(n => n.endsWith(end) && !n.includes('READ_ONLY') && process.env[n]);
+    if (k) return process.env[k];
+  }
+};
+const URL_ = pick('UPSTASH_REDIS_REST_URL', 'KV_REST_API_URL', 'REDIS_REST_URL', 'REST_API_URL');
+const TOKEN = pick('UPSTASH_REDIS_REST_TOKEN', 'KV_REST_API_TOKEN', 'REDIS_REST_TOKEN', 'REST_API_TOKEN');
+const configured = () => ({ url: !!URL_, token: !!TOKEN });
 
 async function redis(...cmd) {
-  if (!URL_ || !TOKEN) throw new Error('Upstash is not configured');
+  if (!URL_ || !TOKEN) { const e = new Error('Database is not connected'); e.code = 'NO_DB'; throw e; }
   const r = await fetch(URL_, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
@@ -19,4 +27,4 @@ const validWallet = a => typeof a === 'string' && (/^0x[a-fA-F0-9]{40}$/.test(a)
 // EVM addresses are case-insensitive; Solana ones are not.
 const walletKey = a => (a.startsWith('0x') ? a.toLowerCase() : a);
 
-module.exports = { redis, validUser, validWallet, walletKey };
+module.exports = { redis, configured, validUser, validWallet, walletKey };

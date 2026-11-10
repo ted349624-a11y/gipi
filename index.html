@@ -128,7 +128,8 @@
   @keyframes shake { 20% { transform: translateX(-6px) } 40% { transform: translateX(5px) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
   .field .pre { color: var(--muted); }
   .field input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg); font: 500 16px var(--sans); padding: 8px 0; }
-  .field input.addr { font: 500 13px var(--mono); }
+  /* 16px keeps iOS from zooming the page when the field is focused */
+  .field input.addr { font: 500 16px var(--mono); letter-spacing: -.04em; }
   .field input::placeholder { color: rgba(162,163,189,.6); }
   .go { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; padding: 0;
     color: var(--muted); background: rgba(255,255,255,.1); transition: .25s; }
