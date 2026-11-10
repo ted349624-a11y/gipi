@@ -1,21 +1,37 @@
-// GET /api/export?key=ADMIN_KEY  →  CSV of every sign-up. Set ADMIN_KEY in the Vercel project settings.
+// GET /api/export?key=ADMIN_KEY            →  table of every sign-up, readable in the browser
+// GET /api/export?key=ADMIN_KEY&format=csv  →  the same as a CSV download
+// Set ADMIN_KEY in the Vercel project settings, then redeploy.
 const { redis } = require('./_redis');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 module.exports = async (req, res) => {
-  const key = process.env.ADMIN_KEY;
-  if (!key || req.query.key !== key) return res.status(401).send('Unauthorized');
+  res.setHeader('Cache-Control', 'no-store');
+  const key = (process.env.ADMIN_KEY || '').trim();
+  const given = String(req.query.key || '').trim();
+  if (!key) return res.status(401).send('ADMIN_KEY is not set on the server. Add it in Vercel (Settings > Environment Variables, Production) and redeploy.');
+  if (!given) return res.status(401).send('Add your key to the address: /api/export?key=YOUR_KEY');
+  if (given !== key) return res.status(401).send('Wrong key. It must match the ADMIN_KEY value in Vercel exactly.');
   try {
     const [users, refs] = await Promise.all([redis('HGETALL', 'wl:users'), redis('HGETALL', 'wl:refs')]);
     const toMap = a => { const m = {}; for (let i = 0; i < (a || []).length; i += 2) m[a[i]] = a[i + 1]; return m; };
     const u = toMap(users), r = toMap(refs);
     const rows = Object.keys(u).map(id => ({ ...JSON.parse(u[id]), refs: Number(r[id]) || 0 })).sort((a, b) => a.ts - b.ts);
-    const csv = ['username,wallet,referred_by,referrals,joined_at']
-      .concat(rows.map(x => [x.user, x.wallet, x.ref || '', x.refs, new Date(x.ts).toISOString()].join(','))).join('\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).send(csv + '\n');
+    if (req.query.format === 'csv') {
+      const csv = ['username,wallet,referred_by,referrals,joined_at']
+        .concat(rows.map(x => [x.user, x.wallet, x.ref || '', x.refs, new Date(x.ts).toISOString()].join(','))).join('\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="giphyfun-whitelist.csv"');
+      return res.status(200).send(csv + '\n');
+    }
+    const body = rows.map((x, i) => `<tr><td>${i + 1}</td><td>@${esc(x.user)}</td><td class="w">${esc(x.wallet)}</td><td>${x.ref ? '@' + esc(x.ref) : ''}</td><td>${x.refs}</td><td>${new Date(x.ts).toISOString().slice(0, 16).replace('T', ' ')}</td></tr>`).join('');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>GiphyFun sign-ups</title>
+<style>body{margin:0;padding:16px;background:#050507;color:#f5f4ff;font:14px system-ui,sans-serif}h1{font-size:20px;margin:0 0 4px}p{color:#a2a3bd;margin:0 0 14px}a{color:#2bd4ff}
+.s{overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #26263a;white-space:nowrap}th{color:#a2a3bd;font-weight:600}.w{font-family:ui-monospace,Menlo,monospace;font-size:12px}</style></head>
+<body><h1>GiphyFun sign-ups</h1><p>${rows.length} total (UTC times) · <a href="?key=${encodeURIComponent(given)}&format=csv">Download CSV</a></p>
+<div class="s"><table><thead><tr><th>#</th><th>Username</th><th>Wallet</th><th>Referred by</th><th>Referrals</th><th>Joined</th></tr></thead><tbody>${body || '<tr><td colspan="6">No sign-ups yet.</td></tr>'}</tbody></table></div></body></html>`);
   } catch (e) {
     console.error(e);
-    return res.status(500).send('Unavailable');
+    return res.status(500).send('Database error: ' + String(e.message).slice(0, 120));
   }
 };
