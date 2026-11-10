@@ -124,6 +124,7 @@
   .field { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.07); border: 1px solid var(--line); border-radius: 999px; padding: 4px 4px 4px 14px; min-width: 0; transition: border-color .2s, box-shadow .2s; }
   .field:focus-within { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.18); }
   .field.bad { border-color: var(--bad); animation: shake .4s; }
+  .field.busy { opacity: .6; pointer-events: none; }
   @keyframes shake { 20% { transform: translateX(-6px) } 40% { transform: translateX(5px) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
   .field .pre { color: var(--muted); }
   .field input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg); font: 500 16px var(--sans); padding: 8px 0; }
@@ -302,7 +303,14 @@ function fillSlip(el, i){
     const submit = () => {
       const v = st.clean(input.value);
       if (!st.valid(v)) { field.classList.remove('bad'); void field.offsetWidth; field.classList.add('bad'); hint.textContent = st.err; hint.classList.add('err'); input.focus(); return; }
-      state[st.key] = v; store.set(st.key, v); next();
+      state[st.key] = v; store.set(st.key, v);
+      if (st.id !== 'wallet') return next();
+      /* Last step: save the sign-up, then flip the card. */
+      if (field.classList.contains('busy')) return;
+      field.classList.add('busy'); hint.textContent = 'Saving…'; hint.classList.remove('err');
+      join().then(() => next())
+        .catch(e => { hint.textContent = e.message || 'Could not save. Try again.'; hint.classList.add('err'); })
+        .finally(() => field.classList.remove('busy'));
     };
     input.addEventListener('input', sync);
     input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
@@ -339,6 +347,26 @@ function showStep(i, dir){
   if (inp && dir && matchMedia('(hover: hover)').matches) setTimeout(() => inp.focus({ preventScroll: true }), 380);
 }
 
+/* ---------- server: sign-ups are stored through /api (Upstash Redis on Vercel) ---------- */
+async function join(){
+  let r;
+  try {
+    r = await fetch('/api/join', { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ user: state.user, wallet: state.wallet, ref: store.get('referrer') || '' }) });
+  } catch { throw new Error('No connection. Try again.'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Could not save. Try again.');
+  state.refs = j.refs || 0;
+}
+function loadRefs(){
+  fetch('/api/me?user=' + encodeURIComponent(state.user)).then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) { state.refs = j.refs; showWho(); } }).catch(() => {});
+}
+function showWho(){
+  const n = state.refs || 0;
+  $('#who').textContent = '@' + state.user + ' · ' + n + (n === 1 ? ' referral' : ' referrals');
+}
+
 function next(){
   state.step++; store.set('step', state.step);
   if (state.step >= N) finish(true); else showStep(state.step, 1);
@@ -347,7 +375,7 @@ $('#prevBtn').addEventListener('click', () => { if (state.step > 0) { state.step
 
 /* ---------- back of the card ---------- */
 function fillBack(){
-  $('#who').textContent = '@' + state.user;
+  showWho();
   $('#refLink').textContent = refLink();
   const text = 'I just got early access on the GiphyFun whitelist! Join me: ' + refLink() + ' @' + CONFIG.handle;
   $('#shareX').href = 'https://x.com/intent/post?text=' + encodeURIComponent(text);
@@ -400,7 +428,7 @@ $('#resetBtn').addEventListener('click', () => {
 })();
 
 /* ---------- boot ---------- */
-if (state.step >= N) { showStep(N - 1, 0); finish(false); } else showStep(state.step, 0);
+if (state.step >= N) { showStep(N - 1, 0); finish(false); loadRefs(); } else showStep(state.step, 0);
 </script>
 </body>
 </html>
