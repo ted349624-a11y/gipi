@@ -1,4 +1,5 @@
-// POST /api/join  { user, wallet, ref? }  →  { ok, refs }
+// POST /api/join  { user, wallet, ref?, list? }  →  { ok, refs }
+// list: 'wait' saves to the waitlist (/apply); anything else saves to the whitelist (home page). The two lists are separate.
 const { redis, validUser, validWallet, walletKey } = require('./_redis');
 
 module.exports = async (req, res) => {
@@ -8,32 +9,33 @@ module.exports = async (req, res) => {
     const user = String(body.user || '').replace(/^@/, '');
     const wallet = String(body.wallet || '').trim();
     const ref = String(body.ref || '').replace(/^@/, '');
+    const P = body.list === 'wait' ? 'wait:' : 'wl:';
     if (!validUser(user)) return res.status(400).json({ error: 'Invalid username' });
     if (!validWallet(wallet)) return res.status(400).json({ error: 'Invalid wallet address' });
 
     // At most 10 sign-ups a minute from one address.
     const ip = String(req.headers['x-forwarded-for'] || 'unknown').split(',')[0].trim();
-    const hits = await redis('INCR', 'wl:rl:' + ip);
-    if (hits === 1) await redis('EXPIRE', 'wl:rl:' + ip, 60);
+    const hits = await redis('INCR', P + 'rl:' + ip);
+    if (hits === 1) await redis('EXPIRE', P + 'rl:' + ip, 60);
     if (hits > 10) return res.status(429).json({ error: 'Too many attempts. Try again in a minute.' });
 
     const id = user.toLowerCase(), wkey = walletKey(wallet);
-    const existing = await redis('HGET', 'wl:users', id);
+    const existing = await redis('HGET', P + 'users', id);
     if (existing) {
       // First sign-up wins: a username cannot be re-registered with another wallet.
       if (walletKey(JSON.parse(existing).wallet) !== wkey) return res.status(409).json({ error: 'This username is already registered.' });
     } else {
-      const owner = await redis('HGET', 'wl:wallets', wkey);
+      const owner = await redis('HGET', P + 'wallets', wkey);
       if (owner && owner !== id) return res.status(409).json({ error: 'This wallet is already registered.' });
       const refId = validUser(ref) && ref.toLowerCase() !== id ? ref.toLowerCase() : '';
       const record = JSON.stringify({ user, wallet, ref: refId, ts: Date.now() });
-      const created = await redis('HSETNX', 'wl:users', id, record);
+      const created = await redis('HSETNX', P + 'users', id, record);
       if (created === 1) {
-        await redis('HSET', 'wl:wallets', wkey, id);
-        if (refId && await redis('HEXISTS', 'wl:users', refId)) await redis('HINCRBY', 'wl:refs', refId, 1);
+        await redis('HSET', P + 'wallets', wkey, id);
+        if (refId && await redis('HEXISTS', P + 'users', refId)) await redis('HINCRBY', P + 'refs', refId, 1);
       }
     }
-    const refs = Number(await redis('HGET', 'wl:refs', id)) || 0;
+    const refs = Number(await redis('HGET', P + 'refs', id)) || 0;
     return res.status(200).json({ ok: true, refs });
   } catch (e) {
     console.error(e);
