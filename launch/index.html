@@ -199,23 +199,53 @@
   .gbox img { filter: drop-shadow(0 0 22px rgba(122,108,255,.6)); animation: bob 5s ease-in-out infinite; }
   .gbox h1 { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -.03em; background: var(--rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .gbox p { margin: 0; color: var(--muted); }
-  .gtasks { display: grid; gap: 8px; width: 100%; margin-top: 6px; }
-  .gtask { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--panel); color: inherit; text-decoration: none; font-weight: 600; text-align: left; transition: border-color .2s, transform .2s; }
-  .gtask:hover { border-color: var(--c); transform: translateY(-1px); }
-  .gtask small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
-  .gtask i { font-style: normal; font-size: 13px; font-weight: 700; color: var(--c); flex: none; }
-  .gtask.done { border-color: rgba(124,255,107,.45); } .gtask.done i { color: var(--up); }
   .gfield { display: flex; gap: 8px; width: 100%; }
   .gfield input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--panel); padding: 0 16px; font-size: 16px; outline: none; text-align: center; letter-spacing: .1em; }
   .gfield input:focus { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.16); }
   .gfield .cta { padding: 0 20px; flex: none; }
-  .guser { position: relative; } .guser span { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 600; pointer-events: none; }
-  .guser input { text-align: left; letter-spacing: 0; padding-left: 36px; }
   .gsep { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 8px; color: var(--muted); font-size: 13px; }
   .gsep::before, .gsep::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
   .gapply { display: grid; gap: 10px; width: 100%; justify-items: center; }
   .gbox, .gapply { grid-template-columns: minmax(0, 1fr); }
-  .gapply #aGo { width: 100%; } .gapply #aGo[disabled] { cursor: not-allowed; }
+  /* task deck, same idea as the whitelist card: one task on top, the next slides over it when this one is done */
+  .ghead { display: flex; align-items: center; gap: 10px; width: 100%; font-size: 13px; color: var(--muted); }
+  .segs { display: flex; gap: 5px; flex: 1; }
+  .segs i { flex: 1; height: 4px; border-radius: 4px; background: rgba(255,255,255,.12); transition: background .4s, box-shadow .4s; }
+  .segs i.on { background: var(--sc); box-shadow: 0 0 10px var(--sc); }
+  .segs i.now { background: rgba(255,255,255,.45); }
+  .gback { border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer; padding: 4px 0; }
+  .gback:hover { color: var(--fg, #fff); }
+  .deck { position: relative; height: 150px; width: 100%; margin-bottom: 14px; text-align: left; }
+  .deck::before, .deck::after { content: ""; position: absolute; left: 0; right: 0; height: 100%; border-radius: 18px; background: var(--panel-2); border: 1px solid var(--line); }
+  .deck::before { transform: translateY(12px) scale(.9); opacity: .35; }
+  .deck::after { transform: translateY(6px) scale(.95); opacity: .6; }
+  .deck.last::before, .deck.last::after { opacity: 0; }
+  .deck.one::before { opacity: 0; }
+  .slip { position: absolute; inset: 0; z-index: 2; border-radius: 18px; background: var(--panel-2); border: 1px solid var(--line-2); padding: 14px; box-sizing: border-box;
+    display: flex; flex-direction: column; justify-content: center; gap: 10px;
+    transition: transform .5s cubic-bezier(.2,.8,.2,1), opacity .4s; box-shadow: 0 -10px 30px rgba(0,0,0,.45); }
+  .slip.enter { transform: translateY(125%); }
+  .slip.enter.rev { transform: translateY(-20px) scale(.92); opacity: 0; }
+  .slip.leave { transform: translateY(-14px) scale(.92); opacity: 0; z-index: 1; }
+  .slip.leave.rev { transform: translateY(125%); opacity: 1; z-index: 3; }
+  .slip .st { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .slip .num { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: var(--on-neon); background: var(--sc); box-shadow: 0 0 14px var(--sc); }
+  .slip .tt { font-size: 17px; font-weight: 600; letter-spacing: -.01em; min-width: 0; }
+  .slip .hint { font-size: 12px; color: var(--muted); margin: -4px 0 0; } .slip .hint.err { color: var(--down); }
+  .slip .field { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.07); border: 1px solid var(--line); border-radius: 999px; padding: 4px 4px 4px 14px; min-width: 0; }
+  .slip .field:focus-within { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.18); }
+  .slip .field span { color: var(--muted); }
+  .slip .field input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: inherit; font: 500 16px inherit; font-family: inherit; padding: 8px 0; }
+  .slip .go { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; font-size: 18px; font-weight: 700; color: var(--muted); background: rgba(255,255,255,.1); }
+  .slip .field.ok .go { color: var(--on-neon); background: var(--rainbow); }
+  .slip .acts { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .slip .btn { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 18px; border-radius: 999px; font: inherit; font-weight: 700; font-size: 15px; text-decoration: none; cursor: pointer; }
+  .slip .btn.line { border: 1px solid var(--line-2); color: inherit; background: none; }
+  .slip .btn.line:hover { border-color: var(--c); }
+  .slip .btn.done { border: 0; color: var(--on-neon); background: var(--rainbow); }
+  .slip .btn[disabled] { opacity: .6; cursor: progress; }
+  .slip .mini { font-size: 13px; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .slip { transition: none; } }
   .gate { box-sizing: border-box; width: 100%; }
   .gbox .msg { min-height: 20px; }
 </style>
@@ -232,10 +262,9 @@
     <p class="msg err" id="gMsg" role="alert"></p>
     <div class="gsep"><span>No code yet?</span></div>
     <div class="gapply" id="gApply">
-      <p>Do the tasks on X to apply. Winners get a code from @giphyfun.</p>
-      <div class="gfield guser"><span>@</span><input id="aUser" type="text" aria-label="Your X username" placeholder="username" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-      <div class="gtasks" id="gTasks"></div>
-      <button class="cta" id="aGo" type="button" disabled>Apply for a code</button>
+      <p>Finish the tasks on X to apply. Winners get a code from @giphyfun.</p>
+      <div class="ghead"><button class="gback" id="aBack" type="button" hidden>← Back</button><div class="segs" id="aSegs"></div><span id="aCount"></span></div>
+      <div class="deck" id="aDeck"></div>
       <p class="msg err" id="aMsg" role="alert"></p>
     </div>
     <p class="msg ok" id="aDone" hidden></p>
@@ -493,38 +522,90 @@ const GTASKS = [
 const gKey = 'tasks_' + (xPostId || 'profile');
 let gDone = new Set((store.get(gKey) || '').split(',').filter(Boolean));
 const validX = u => /^[A-Za-z0-9_]{1,15}$/.test(u);
-const xUser = () => $('#aUser').value.trim().replace(/^@/, '');
-const canApply = () => validX(xUser()) && GTASKS.every(k => gDone.has(k.id));
-function drawTasks(){
-  $('#gTasks').innerHTML = GTASKS.map(k => `<a class="gtask${gDone.has(k.id) ? ' done' : ''}" href="${k.href}" target="_blank" rel="noopener" data-task="${k.id}"><span>${k.t}${k.hint ? `<small>${k.hint}</small>` : ''}</span><i>${gDone.has(k.id) ? 'Done' : 'Open'}</i></a>`).join('');
-  $('#aGo').disabled = !canApply();
+const SEGC = ['#ffe95a','#7cff6b','#2bd4ff','#7a6cff','#e04bff','#ff5fa2'];
+/* step 0 is the username, then one task at a time */
+const ASTEPS = [{ id:'user', t:'Your X username' }, ...GTASKS];
+const AN = ASTEPS.length;
+let aUser = store.get('xuser') || '';
+let aStep = Math.min(AN - 1, +store.get('step_' + gKey) || 0); if (!validX(aUser)) aStep = 0;
+const aDeck = $('#aDeck'), noMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+$('#aSegs').innerHTML = ASTEPS.map((_, i) => `<i style="--sc:${SEGC[i % 6]}"></i>`).join('');
+
+function fillSlip(el, i){
+  const st = ASTEPS[i];
+  const head = `<div class="st"><span class="num">${i + 1}</span><span class="tt">${st.t}</span></div>`;
+  if (st.id === 'user') {
+    el.innerHTML = head + `<div class="field"><span>@</span><input type="text" placeholder="username" aria-label="Your X username" maxlength="16" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="go" type="button" aria-label="Continue">→</button></div><p class="hint"></p>`;
+    const field = el.querySelector('.field'), input = el.querySelector('input'), hint = el.querySelector('.hint');
+    const clean = () => input.value.trim().replace(/^@/, '');
+    input.value = aUser;
+    const sync = () => { field.classList.toggle('ok', validX(clean())); hint.textContent = ''; hint.classList.remove('err'); };
+    const submit = () => {
+      if (!validX(clean())) { hint.textContent = '1–15 letters, numbers or _'; hint.classList.add('err'); input.focus(); return; }
+      aUser = clean(); store.set('xuser', aUser); aNext();
+    };
+    input.addEventListener('input', sync);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    el.querySelector('.go').addEventListener('click', submit);
+    sync();
+  } else {
+    const opened = gDone.has(st.id);
+    el.innerHTML = head + (st.hint ? `<p class="hint">${st.hint}</p>` : '') + (opened
+      ? `<div class="acts"><button class="btn done" type="button">✓ Done</button><a class="mini" href="${st.href}" target="_blank" rel="noopener">Open again ↗</a></div>`
+      : `<div class="acts"><a class="btn line" href="${st.href}" target="_blank" rel="noopener">Open on X ↗</a></div>`);
+    el.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+      if (gDone.has(st.id)) return;
+      gDone.add(st.id); store.set(gKey, [...gDone].join(','));
+      setTimeout(() => { if (aStep === i && el.isConnected) fillSlip(el, i); }, 350);
+    }));
+    const done = el.querySelector('.done'); if (done) done.addEventListener('click', () => aNext(done));
+  }
 }
+function aChrome(){
+  [...$('#aSegs').children].forEach((el, i) => { el.classList.toggle('on', i < aStep); el.classList.toggle('now', i === aStep); });
+  $('#aCount').textContent = (aStep + 1) + ' / ' + AN;
+  $('#aBack').hidden = aStep === 0;
+  aDeck.classList.toggle('last', aStep >= AN - 1); aDeck.classList.toggle('one', aStep === AN - 2);
+}
+function showStep(i, dir){
+  const old = aDeck.querySelector('.slip:not(.leave)');
+  const el = document.createElement('div');
+  el.className = 'slip'; el.style.setProperty('--sc', SEGC[i % 6]);
+  fillSlip(el, i);
+  if (old && dir && !noMotion) {
+    el.classList.add('enter'); if (dir < 0) el.classList.add('rev');
+    aDeck.appendChild(el); void el.offsetWidth; el.classList.remove('enter', 'rev');
+    old.classList.add('leave'); if (dir < 0) old.classList.add('rev');
+    old.querySelectorAll('a, button, input').forEach(n => n.tabIndex = -1);
+    setTimeout(() => old.remove(), 520);
+  } else { if (old) old.remove(); aDeck.appendChild(el); }
+  aChrome();
+}
+function aNext(btn){
+  if (aStep < AN - 1) { aStep++; store.set('step_' + gKey, aStep); $('#aMsg').textContent = ''; return showStep(aStep, 1); }
+  apply(btn);
+}
+$('#aBack').addEventListener('click', () => { if (aStep > 0) { aStep--; store.set('step_' + gKey, aStep); $('#aMsg').textContent = ''; showStep(aStep, -1); } });
 function showApplied(u){
   $('#gApply').hidden = true; const d = $('#aDone'); d.hidden = false;
   d.textContent = 'Applied as @' + u + '. Winners get their code from @' + XCFG.handle + ' on X.';
 }
-$('#gTasks').addEventListener('click', e => {
-  const a = e.target.closest('[data-task]'); if (!a) return;
-  gDone.add(a.dataset.task); store.set(gKey, [...gDone].join(','));
-  setTimeout(drawTasks, 600);
-});
-$('#aUser').addEventListener('input', () => { $('#aGo').disabled = !canApply(); });
-async function apply(){
-  const msg = $('#aMsg'), btn = $('#aGo'), u = xUser();
-  btn.disabled = true; msg.textContent = '';
+/* Last task done: save the application. */
+async function apply(btn){
+  const msg = $('#aMsg');
+  if (btn) btn.disabled = true; msg.textContent = '';
   try {
-    const r = await fetch('/api/apply', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ user: u, tasks: [...gDone] }) });
+    const r = await fetch('/api/apply', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ user: aUser, tasks: [...gDone] }) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { msg.textContent = j.error || 'Could not save. Try again.'; btn.disabled = false; return; }
-    store.set('applied_' + gKey, u); showApplied(u);
-  } catch { msg.textContent = 'No connection. Try again.'; btn.disabled = false; }
+    if (!r.ok) { msg.textContent = j.error || 'Could not save. Try again.'; if (btn) btn.disabled = false; return; }
+    store.set('applied_' + gKey, aUser); showApplied(aUser);
+  } catch { msg.textContent = 'No connection. Try again.'; if (btn) btn.disabled = false; }
 }
-$('#aGo').addEventListener('click', apply);
 
 function showGate(){
   const g = $('#gate'); if (!g.hidden) return;
   g.hidden = false; $('#app').hidden = true;
-  const u = store.get('applied_' + gKey); if (u) showApplied(u); else drawTasks();
+  const u = store.get('applied_' + gKey); if (u) showApplied(u); else showStep(aStep, 0);
 }
 async function tryCode(){
   const inp = $('#gCode'), msg = $('#gMsg'), btn = $('#gGo');
