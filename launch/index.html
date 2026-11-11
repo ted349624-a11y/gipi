@@ -216,7 +216,7 @@
 
   <section aria-labelledby="trendH" id="trendSec" hidden>
     <div class="sec">
-      <h2 id="trendH">Latest</h2>
+      <h2 id="trendH">Trending</h2>
       <div class="arrows">
         <button class="icon" id="prev" type="button" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></button>
         <button class="icon" id="next" type="button" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></button>
@@ -227,8 +227,10 @@
 
   <section>
     <div class="tabs" id="tabs" role="tablist">
-      <button class="tab" role="tab" data-tab="new" aria-selected="true">New</button>
-      <button class="tab" role="tab" data-tab="old" aria-selected="false">Oldest</button>
+      <button class="tab" role="tab" data-tab="mcap" aria-selected="true">Market cap</button>
+      <button class="tab" role="tab" data-tab="new" aria-selected="false">New</button>
+      <button class="tab" role="tab" data-tab="near" aria-selected="false">Near graduation</button>
+      <button class="tab" role="tab" data-tab="grad" aria-selected="false">Graduated</button>
       <button class="tab" role="tab" data-tab="fee" aria-selected="false">Highest fee</button>
       <span class="ink" id="ink"></span>
     </div>
@@ -259,29 +261,34 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const age = ts => { const m = (Date.now() - ts) / 60000; return m < 60 ? Math.max(1, Math.round(m)) + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : m < 43200 ? Math.round(m / 1440) + 'd' : Math.round(m / 43200) + 'mo'; };
 const fee = bps => (bps / 100).toFixed(bps % 100 ? 1 : 0) + '% fee';
+const money = t => t.mcapUsd != null ? '$' + compact(t.mcapUsd) : t.mcapEth != null ? compact(t.mcapEth) + ' ETH' : '—';
+const compact = n => n >= 1e9 ? (n/1e9).toFixed(1) + 'B' : n >= 1e6 ? (n/1e6).toFixed(1) + 'M' : n >= 1e3 ? (n/1e3).toFixed(1) + 'K' : n >= 10 ? n.toFixed(0) : n.toFixed(2);
+const pct = c => c == null ? '' : (c > 0 ? '+' : '') + c.toFixed(1) + '%';
+const cls = c => c < 0 ? 'down' : 'up';
 const short = a => a.slice(0, 6) + '…' + a.slice(-4);
 const art = t => `<img src="${GATEWAY}${encodeURIComponent(t.cid)}" alt="" loading="lazy">`;
 const store = { get(k){ try { return localStorage.getItem('gfl_'+k); } catch { return null; } }, set(k,v){ try { localStorage.setItem('gfl_'+k, v); } catch {} } };
-let ui = { tab:'new', q:'', view: store.get('view') === 'grid' ? 'grid' : 'list' };
+let ui = { tab:'mcap', q:'', view: store.get('view') === 'grid' ? 'grid' : 'list' };
 
 async function load(){
   try {
     const r = await fetch('/api/coins'); const j = await r.json();
     TOKENS = (j.coins || []).map((t, i) => ({ ...t, id: i, a: C[i % 6], b: C[(i + 2) % 6] })); OPEN = !!j.open;
+    if (!TOKENS.length && !j.coins) throw 0;
   } catch { TOKENS = []; }
   loaded = true; drawRail(); drawList();
 }
 
 /* ---------- latest rail ---------- */
 function drawRail(){
-  const top = TOKENS.slice(0, 8);
+  const top = [...TOKENS].sort((a,b) => (b.chg ?? -1e9) - (a.chg ?? -1e9) || b.ts - a.ts).slice(0, 8);
   $('#trendSec').hidden = !top.length;
   $('#rail').innerHTML = top.map((t, i) => `
     <button class="tcard" type="button" data-id="${t.id}">
       <div class="art" style="--d:${(-i * .7).toFixed(1)}s"><div class="coin">${art(t)}</div></div>
       <div class="tmeta">
         <div class="tname"><i>${i + 1}</i><b>${esc(t.name)}</b></div>
-        <div class="tnum"><strong>$${esc(t.symbol)}</strong><span class="feeTag">${fee(t.feeBps)}</span></div>
+        <div class="tnum"><strong>${money(t)}</strong><span class="chg ${cls(t.chg)}">${pct(t.chg)}</span></div>
       </div>
     </button>`).join('');
 }
@@ -293,10 +300,13 @@ $('#next').addEventListener('click', () => rail.scrollBy({ left: step() * 2, beh
 /* ---------- list ---------- */
 function visible(){
   const r = TOKENS.filter(t => !ui.q || (t.name + ' ' + t.symbol + ' ' + t.token).toLowerCase().includes(ui.q));
-  if (ui.tab === 'new') r.sort((a,b) => b.ts - a.ts);
-  if (ui.tab === 'old') r.sort((a,b) => a.ts - b.ts);
-  if (ui.tab === 'fee') r.sort((a,b) => b.feeBps - a.feeBps || b.ts - a.ts);
-  return r;
+  let r2 = r;
+  if (ui.tab === 'mcap') r2.sort((a,b) => (b.mcapEth ?? -1) - (a.mcapEth ?? -1));
+  if (ui.tab === 'new') r2.sort((a,b) => b.ts - a.ts);
+  if (ui.tab === 'near') r2 = r2.filter(t => !t.grad).sort((a,b) => (b.prog ?? 0) - (a.prog ?? 0));
+  if (ui.tab === 'grad') r2 = r2.filter(t => t.grad).sort((a,b) => (b.mcapEth ?? 0) - (a.mcapEth ?? 0));
+  if (ui.tab === 'fee') r2.sort((a,b) => b.feeBps - a.feeBps || b.ts - a.ts);
+  return r2;
 }
 function drawList(){
   const r = visible(), el = $('#list');
@@ -307,11 +317,11 @@ function drawList(){
       <span class="ava" style="--a:${t.a};--b:${t.b}">${art(t)}</span>
       <span class="info">
         <span class="nm"><b>${esc(t.name)}</b><span class="tk">$${esc(t.symbol)}</span></span>
-        <span class="sub"><span class="by">${short(t.token)}</span><span>${age(t.ts)}</span></span>
+        <span class="sub"><span>${age(t.ts)}</span><span>${fee(t.feeBps)}</span>${t.grad ? '<span class="grad">Graduated</span>' : t.prog != null ? `<span class="bar" title="${t.prog.toFixed(0)}% to graduation"><i style="width:${t.prog}%"></i></span><span>${t.prog.toFixed(0)}%</span>` : ''}</span>
       </span>
-      <span class="val"><strong>${fee(t.feeBps)}</strong></span>
+      <span class="val"><strong>${money(t)}</strong><span class="chg ${cls(t.chg)}">${pct(t.chg)}</span></span>
     </button>`).join('')
-    : `<div class="empty">${!loaded ? 'Loading coins…' : TOKENS.length ? 'No coins match your search.' : 'No coins yet. Launch the first one.'}</div>`;
+    : `<div class="empty">${!loaded ? 'Loading coins…' : TOKENS.length ? 'No coins here yet.' : 'No coins yet. Launch the first one.'}</div>`;
 }
 function moveInk(){
   const t = $('.tab[aria-selected="true"]'), ink = $('#ink');
@@ -343,6 +353,11 @@ function tokenSheet(t){
     <div class="sh"><h3 id="sheetH">${esc(t.name)} <span class="tk">$${esc(t.symbol)}</span></h3>${X}</div>
     <div class="prev"><span class="ava" style="--a:${t.a};--b:${t.b}">${art(t)}</span>
       <span class="info"><b>${fee(t.feeBps)}</b><span class="sub">Launched ${age(t.ts)} ago · ETH pair</span></span></div>
+    <div class="stats">
+      <div class="stat"><span>Market cap</span><b>${money(t)}</b></div>
+      <div class="stat"><span>24h</span><b class="chg ${cls(t.chg)}">${pct(t.chg) || '—'}</b></div>
+      <div class="stat"><span>Graduation</span><b>${t.grad ? 'Done' : t.prog != null ? t.prog.toFixed(0) + '%' : '—'}</b></div>
+    </div>
     ${t.description ? `<p class="desc">${esc(t.description)}</p>` : ''}
     <div class="f">Contract<span class="addr">${esc(t.token)}</span></div>
     <a class="cta" style="text-align:center;text-decoration:none;display:block" href="${PONS}${encodeURIComponent(t.token)}" target="_blank" rel="noopener">Trade on Pons ↗</a>`);
@@ -417,6 +432,8 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-id]'
 
 /* ---------- boot ---------- */
 setView(ui.view); moveInk(); load();
+/* Refresh the numbers every 30 seconds while the page is visible and no sheet is open. */
+setInterval(() => { if (!document.hidden && scrim.hidden) load(); }, 30000);
 addEventListener('resize', moveInk);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveInk);
 </script>

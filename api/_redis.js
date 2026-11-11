@@ -22,9 +22,21 @@ async function redis(...cmd) {
   return j.result;
 }
 
+// Several commands in one round trip. Returns the results in order.
+async function pipeline(cmds) {
+  if (!cmds.length) return [];
+  if (!URL_ || !TOKEN) { const e = new Error('Database is not connected'); e.code = 'NO_DB'; throw e; }
+  const r = await fetch(URL_.replace(/\/$/, '') + '/pipeline', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(cmds)
+  });
+  const j = await r.json();
+  if (!r.ok || !Array.isArray(j)) throw new Error('Redis pipeline error ' + r.status);
+  return j.map(x => x.result);
+}
+
 const validUser = u => typeof u === 'string' && /^[A-Za-z0-9_]{1,15}$/.test(u);
 const validWallet = a => typeof a === 'string' && (/^0x[a-fA-F0-9]{40}$/.test(a) || /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a));
 // EVM addresses are case-insensitive; Solana ones are not.
 const walletKey = a => (a.startsWith('0x') ? a.toLowerCase() : a);
 
-module.exports = { redis, configured, validUser, validWallet, walletKey };
+module.exports = { redis, pipeline, configured, validUser, validWallet, walletKey };

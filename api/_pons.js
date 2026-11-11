@@ -19,6 +19,14 @@ const abi = parseAbi([
   'event TokenLaunched(address indexed token, address indexed curve, address indexed deployer, address pairToken, uint256 launchConfigId, uint256 graduationThreshold)'
 ]);
 const launchAbi = [abi[0]];
+const factoryReads = parseAbi(['function launchFee() view returns (uint256)']);
+const curveAbi = parseAbi([
+  'function getReserves() view returns (uint256 quoteReserve, uint256 tokenReserve)',
+  'function realQuoteReserve() view returns (uint256)',
+  'function graduationThreshold() view returns (uint256)',
+  'function graduated() view returns (bool)'
+]);
+const SUPPLY = 1e9;   // every Pons token has a fixed supply of 1,000,000,000
 const tokenLaunched = abi.find(x => x.type === 'event');
 
 const pub = () => createPublicClient({ chain, transport: http(RPC, { timeout: 15000 }) });
@@ -61,7 +69,9 @@ async function template(force) {
 async function launch({ name, symbol, logo, description, creatorTaxBps }) {
   const acct = account(), client = pub();
   const t = await template();
-  const value = BigInt(t.feeWei);
+  // Prefer the fee the factory reports right now; fall back to the copied one.
+  let value = BigInt(t.feeWei);
+  try { value = await client.readContract({ address: FACTORY, abi: factoryReads, functionName: 'launchFee' }); } catch {}
   if (value > MAX_VALUE) throw new Error('Launch fee is higher than the configured limit');
   const params = {
     name, symbol, logo, description,
@@ -89,4 +99,20 @@ async function walletInfo() {
   return { address: acct.address, balanceEth: formatEther(bal) };
 }
 
-module.exports = { launch, template, walletInfo, FACTORY, RPC };
+// Live numbers for each coin, read from its bonding curve. Prices are in ETH.
+async function market(coins) {
+  const client = createPublicClient({ chain, transport: http(RPC, { timeout: 12000, batch: { batchSize: 80, wait: 10 } }) });
+  const out = {};
+  await Promise.all(coins.filter(c => c.curve).map(async c => {
+    const call = fn => client.readContract({ address: c.curve, abi: curveAbi, functionName: fn });
+    try {
+      const [res, real, thr, grad] = await Promise.all([call('getReserves'), call('realQuoteReserve'), call('graduationThreshold'), call('graduated')]);
+      if (res[1] === 0n) return;
+      const priceEth = Number(res[0]) / Number(res[1]);
+      out[c.token.toLowerCase()] = { priceEth, mcapEth: priceEth * SUPPLY, prog: thr > 0n ? Math.min(100, Number(real * 10000n / thr) / 100) : 0, grad };
+    } catch {}
+  }));
+  return out;
+}
+
+module.exports = { market, launch, template, walletInfo, FACTORY, RPC };

@@ -56,6 +56,7 @@ module.exports = async (req, res) => {
     const id = out.token.toLowerCase();
     await redis('HSET', 'gf:coins', id, JSON.stringify(coin));
     await redis('ZADD', 'gf:coins:z', coin.ts, id);
+    await redis('DEL', 'gf:coins:cache');
     await redis('INCR', kIp); await redis('EXPIRE', kIp, 90000);
     await redis('INCR', kDay); await redis('EXPIRE', kDay, 90000);
     return res.status(200).json({ ok: true, token: out.token, tx: out.hash, confirmed: out.confirmed, url: 'https://ponsfamily.com/launchpad/' + out.token });
