@@ -16,7 +16,7 @@ async function ethUsd() {
 }
 
 module.exports = async (req, res) => {
-  if (!allowed(req)) { res.setHeader('Cache-Control', 'no-store'); return res.status(401).json({ error: 'Code required', gate: true }); }
+  if (!allowed(req)) { res.setHeader('Cache-Control', 'no-store'); return res.status(401).json({ error: 'Tasks required', gate: true }); }
   try {
     res.setHeader('Cache-Control', active() ? 'private, no-store' : 's-maxage=10, stale-while-revalidate=30');
     const cached = await redis('GET', 'gf:coins:cache');

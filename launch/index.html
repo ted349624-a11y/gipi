@@ -193,16 +193,19 @@
   .addr { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--c); overflow-wrap: anywhere; user-select: all; }
   .desc { margin: 0; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
 
-  /* ---------- access code screen ---------- */
+  /* ---------- X tasks screen ---------- */
   .gate { position: relative; z-index: 2; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
   .gbox { width: min(360px, 100%); display: grid; gap: 12px; justify-items: center; text-align: center; }
   .gbox img { filter: drop-shadow(0 0 22px rgba(122,108,255,.6)); animation: bob 5s ease-in-out infinite; }
   .gbox h1 { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -.03em; background: var(--rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .gbox p { margin: 0; color: var(--muted); }
-  .gfield { display: flex; gap: 8px; width: 100%; }
-  .gfield input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--panel); padding: 0 16px; font-size: 16px; outline: none; text-align: center; letter-spacing: .1em; }
-  .gfield input:focus { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.16); }
-  .gfield .cta { padding: 0 20px; flex: none; }
+  .gtasks { display: grid; gap: 8px; width: 100%; margin-top: 6px; }
+  .gtask { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--panel); color: inherit; text-decoration: none; font-weight: 600; text-align: left; transition: border-color .2s, transform .2s; }
+  .gtask:hover { border-color: var(--c); transform: translateY(-1px); }
+  .gtask small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
+  .gtask i { font-style: normal; font-size: 13px; font-weight: 700; color: var(--c); flex: none; }
+  .gtask.done { border-color: rgba(124,255,107,.45); } .gtask.done i { color: var(--up); }
+  .gbox #gGo { width: 100%; margin-top: 6px; } .gbox #gGo[disabled] { cursor: not-allowed; }
   .gate { box-sizing: border-box; width: 100%; }
   .gbox .msg { min-height: 20px; }
 </style>
@@ -214,8 +217,9 @@
   <div class="gbox">
     <img src="/assets/logo.webp" alt="" width="84" height="82">
     <h1>Launches</h1>
-    <p>Enter the access code.</p>
-    <div class="gfield"><input id="gCode" type="password" aria-label="Access code" placeholder="Access code" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="cta" id="gGo" type="button">Enter</button></div>
+    <p>Complete the tasks on X to open the launchpad.</p>
+    <div class="gtasks" id="gTasks"></div>
+    <button class="cta" id="gGo" type="button" disabled>Enter</button>
     <p class="msg err" id="gMsg" role="alert"></p>
   </div>
 </div>
@@ -454,25 +458,46 @@ function launchSheet(){
 $('#launchBtn').addEventListener('click', launchSheet);
 document.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) tokenSheet(TOKENS[+b.dataset.id]); });
 
-/* ---------- access code ---------- */
+/* ---------- X tasks gate ---------- */
+/* The comment task only opens X: people write their own words. Until POST_URL has a post link, post tasks open the profile. */
+const XCFG = { handle: 'giphyfun', POST_URL: 'https://x.com/giphyfun/status/2120272236946895098' };
+const xProfile = 'https://x.com/' + XCFG.handle;
+const xPostId = (XCFG.POST_URL.match(/status\/(\d+)/) || [])[1] || '';
+const xPost = xPostId ? XCFG.POST_URL : xProfile;
+const GTASKS = [
+  { id:'follow', t:'Follow @' + XCFG.handle, href:xProfile },
+  { id:'bell',   t:'Turn on notifications', href:xProfile },
+  { id:'like',   t:'Like the post', href:xPost },
+  { id:'rt',     t:'Repost', href:xPost },
+  { id:'reply',  t:'Comment', hint:'Write it in your own words.', href:xPostId ? 'https://x.com/intent/post?in_reply_to=' + xPostId : xProfile }
+];
+/* progress is tied to the post, so a new post link asks for the tasks again */
+const gKey = 'tasks_' + (xPostId || 'profile');
+let gDone = new Set((store.get(gKey) || '').split(',').filter(Boolean));
+function drawTasks(){
+  $('#gTasks').innerHTML = GTASKS.map(k => `<a class="gtask${gDone.has(k.id) ? ' done' : ''}" href="${k.href}" target="_blank" rel="noopener" data-task="${k.id}"><span>${k.t}${k.hint ? `<small>${k.hint}</small>` : ''}</span><i>${gDone.has(k.id) ? 'Done' : 'Open'}</i></a>`).join('');
+  $('#gGo').disabled = !GTASKS.every(k => gDone.has(k.id));
+}
+$('#gTasks').addEventListener('click', e => {
+  const a = e.target.closest('[data-task]'); if (!a) return;
+  gDone.add(a.dataset.task); store.set(gKey, [...gDone].join(','));
+  setTimeout(drawTasks, 600);
+});
 function showGate(){
   const g = $('#gate'); if (!g.hidden) return;
-  g.hidden = false; $('#app').hidden = true; $('#gCode').focus();
+  g.hidden = false; $('#app').hidden = true; drawTasks();
 }
-async function tryCode(){
-  const inp = $('#gCode'), msg = $('#gMsg'), btn = $('#gGo');
-  if (!inp.value.trim()) { inp.focus(); return; }
+async function enter(){
+  const msg = $('#gMsg'), btn = $('#gGo');
   btn.disabled = true; msg.textContent = '';
   try {
-    const r = await fetch('/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ code: inp.value }) });
+    const r = await fetch('/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ tasks: [...gDone] }) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { msg.textContent = j.error || 'Wrong code.'; inp.select(); return; }
-    $('#gate').hidden = true; $('#app').hidden = false; inp.value = ''; moveInk(); load();
-  } catch { msg.textContent = 'No connection. Try again.'; }
-  finally { btn.disabled = false; }
+    if (!r.ok) { msg.textContent = j.error || 'Finish the tasks first.'; btn.disabled = false; return; }
+    $('#gate').hidden = true; $('#app').hidden = false; moveInk(); load();
+  } catch { msg.textContent = 'No connection. Try again.'; btn.disabled = false; }
 }
-$('#gGo').addEventListener('click', tryCode);
-$('#gCode').addEventListener('keydown', e => { if (e.key === 'Enter') tryCode(); });
+$('#gGo').addEventListener('click', enter);
 
 /* ---------- boot ---------- */
 setView(ui.view); moveInk(); load();

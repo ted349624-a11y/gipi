@@ -21,7 +21,7 @@ async function pin(buf, name) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return bad(res, 405, 'POST only');
-  if (!allowed(req)) return bad(res, 401, 'Enter the access code first.');
+  if (!allowed(req)) return bad(res, 401, 'Finish the X tasks first.');
   if (process.env.LAUNCH_ENABLED !== '1') return bad(res, 503, 'Launching is not open yet.');
   let locked = false;
   try {
