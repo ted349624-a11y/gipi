@@ -1,5 +1,5 @@
-// Gate for /launch: visitors pass by finishing the X tasks (see gate.js). Set LAUNCH_GATE=off in Vercel to open the page to everyone.
-// The cookie value is derived from a fixed secret-ish hash; LAUNCH_CODE changes it, which signs everyone out.
+// Access code for /launch. Set LAUNCH_CODE in Vercel to change the code; set LAUNCH_GATE=off to open the page to everyone.
+// People apply for a code by doing the X tasks (apply.js); codes are handed out by hand.
 const crypto = require('crypto');
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
 const DEFAULT_HASH = '1c97fc26317583ad7671a7e4d141c312e690ae2ddfda21cd1a4ba11db9fba066';   // hash of the current code, so the code itself is not in the repo

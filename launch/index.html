@@ -193,7 +193,7 @@
   .addr { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--c); overflow-wrap: anywhere; user-select: all; }
   .desc { margin: 0; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
 
-  /* ---------- X tasks screen ---------- */
+  /* ---------- access code screen ---------- */
   .gate { position: relative; z-index: 2; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
   .gbox { width: min(360px, 100%); display: grid; gap: 12px; justify-items: center; text-align: center; }
   .gbox img { filter: drop-shadow(0 0 22px rgba(122,108,255,.6)); animation: bob 5s ease-in-out infinite; }
@@ -205,7 +205,17 @@
   .gtask small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
   .gtask i { font-style: normal; font-size: 13px; font-weight: 700; color: var(--c); flex: none; }
   .gtask.done { border-color: rgba(124,255,107,.45); } .gtask.done i { color: var(--up); }
-  .gbox #gGo { width: 100%; margin-top: 6px; } .gbox #gGo[disabled] { cursor: not-allowed; }
+  .gfield { display: flex; gap: 8px; width: 100%; }
+  .gfield input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--panel); padding: 0 16px; font-size: 16px; outline: none; text-align: center; letter-spacing: .1em; }
+  .gfield input:focus { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.16); }
+  .gfield .cta { padding: 0 20px; flex: none; }
+  .guser { position: relative; } .guser span { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 600; pointer-events: none; }
+  .guser input { text-align: left; letter-spacing: 0; padding-left: 36px; }
+  .gsep { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 8px; color: var(--muted); font-size: 13px; }
+  .gsep::before, .gsep::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
+  .gapply { display: grid; gap: 10px; width: 100%; justify-items: center; }
+  .gbox, .gapply { grid-template-columns: minmax(0, 1fr); }
+  .gapply #aGo { width: 100%; } .gapply #aGo[disabled] { cursor: not-allowed; }
   .gate { box-sizing: border-box; width: 100%; }
   .gbox .msg { min-height: 20px; }
 </style>
@@ -217,10 +227,18 @@
   <div class="gbox">
     <img src="/assets/logo.webp" alt="" width="84" height="82">
     <h1>Launches</h1>
-    <p>Complete the tasks on X to open the launchpad.</p>
-    <div class="gtasks" id="gTasks"></div>
-    <button class="cta" id="gGo" type="button" disabled>Enter</button>
+    <p>Enter your access code.</p>
+    <div class="gfield"><input id="gCode" type="password" aria-label="Access code" placeholder="Access code" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="cta" id="gGo" type="button">Enter</button></div>
     <p class="msg err" id="gMsg" role="alert"></p>
+    <div class="gsep"><span>No code yet?</span></div>
+    <div class="gapply" id="gApply">
+      <p>Do the tasks on X to apply. Winners get a code from @giphyfun.</p>
+      <div class="gfield guser"><span>@</span><input id="aUser" type="text" aria-label="Your X username" placeholder="username" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="gtasks" id="gTasks"></div>
+      <button class="cta" id="aGo" type="button" disabled>Apply for a code</button>
+      <p class="msg err" id="aMsg" role="alert"></p>
+    </div>
+    <p class="msg ok" id="aDone" hidden></p>
   </div>
 </div>
 
@@ -458,7 +476,7 @@ function launchSheet(){
 $('#launchBtn').addEventListener('click', launchSheet);
 document.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) tokenSheet(TOKENS[+b.dataset.id]); });
 
-/* ---------- X tasks gate ---------- */
+/* ---------- access code + X tasks to apply for one ---------- */
 /* The comment task only opens X: people write their own words. Until POST_URL has a post link, post tasks open the profile. */
 const XCFG = { handle: 'giphyfun', POST_URL: 'https://x.com/giphyfun/status/2120272236946895098' };
 const xProfile = 'https://x.com/' + XCFG.handle;
@@ -474,30 +492,54 @@ const GTASKS = [
 /* progress is tied to the post, so a new post link asks for the tasks again */
 const gKey = 'tasks_' + (xPostId || 'profile');
 let gDone = new Set((store.get(gKey) || '').split(',').filter(Boolean));
+const validX = u => /^[A-Za-z0-9_]{1,15}$/.test(u);
+const xUser = () => $('#aUser').value.trim().replace(/^@/, '');
+const canApply = () => validX(xUser()) && GTASKS.every(k => gDone.has(k.id));
 function drawTasks(){
   $('#gTasks').innerHTML = GTASKS.map(k => `<a class="gtask${gDone.has(k.id) ? ' done' : ''}" href="${k.href}" target="_blank" rel="noopener" data-task="${k.id}"><span>${k.t}${k.hint ? `<small>${k.hint}</small>` : ''}</span><i>${gDone.has(k.id) ? 'Done' : 'Open'}</i></a>`).join('');
-  $('#gGo').disabled = !GTASKS.every(k => gDone.has(k.id));
+  $('#aGo').disabled = !canApply();
+}
+function showApplied(u){
+  $('#gApply').hidden = true; const d = $('#aDone'); d.hidden = false;
+  d.textContent = 'Applied as @' + u + '. Winners get their code from @' + XCFG.handle + ' on X.';
 }
 $('#gTasks').addEventListener('click', e => {
   const a = e.target.closest('[data-task]'); if (!a) return;
   gDone.add(a.dataset.task); store.set(gKey, [...gDone].join(','));
   setTimeout(drawTasks, 600);
 });
-function showGate(){
-  const g = $('#gate'); if (!g.hidden) return;
-  g.hidden = false; $('#app').hidden = true; drawTasks();
-}
-async function enter(){
-  const msg = $('#gMsg'), btn = $('#gGo');
+$('#aUser').addEventListener('input', () => { $('#aGo').disabled = !canApply(); });
+async function apply(){
+  const msg = $('#aMsg'), btn = $('#aGo'), u = xUser();
   btn.disabled = true; msg.textContent = '';
   try {
-    const r = await fetch('/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ tasks: [...gDone] }) });
+    const r = await fetch('/api/apply', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ user: u, tasks: [...gDone] }) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { msg.textContent = j.error || 'Finish the tasks first.'; btn.disabled = false; return; }
-    $('#gate').hidden = true; $('#app').hidden = false; moveInk(); load();
+    if (!r.ok) { msg.textContent = j.error || 'Could not save. Try again.'; btn.disabled = false; return; }
+    store.set('applied_' + gKey, u); showApplied(u);
   } catch { msg.textContent = 'No connection. Try again.'; btn.disabled = false; }
 }
-$('#gGo').addEventListener('click', enter);
+$('#aGo').addEventListener('click', apply);
+
+function showGate(){
+  const g = $('#gate'); if (!g.hidden) return;
+  g.hidden = false; $('#app').hidden = true;
+  const u = store.get('applied_' + gKey); if (u) showApplied(u); else drawTasks();
+}
+async function tryCode(){
+  const inp = $('#gCode'), msg = $('#gMsg'), btn = $('#gGo');
+  if (!inp.value.trim()) { inp.focus(); return; }
+  btn.disabled = true; msg.textContent = '';
+  try {
+    const r = await fetch('/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ code: inp.value }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.textContent = j.error || 'Wrong code.'; inp.select(); return; }
+    $('#gate').hidden = true; $('#app').hidden = false; inp.value = ''; moveInk(); load();
+  } catch { msg.textContent = 'No connection. Try again.'; }
+  finally { btn.disabled = false; }
+}
+$('#gGo').addEventListener('click', tryCode);
+$('#gCode').addEventListener('keydown', e => { if (e.key === 'Enter') tryCode(); });
 
 /* ---------- boot ---------- */
 setView(ui.view); moveInk(); load();
