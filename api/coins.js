@@ -1,6 +1,7 @@
 // GET /api/coins  →  { coins, open, ethUsd }  newest first, with live market numbers. Payout addresses are not exposed.
 const { redis, pipeline } = require('./_redis');
 const { market } = require('./_pons');
+const { allowed, active } = require('./_gate');
 
 const DAY = 86400000, SNAP_EVERY = 600000;
 
@@ -15,8 +16,9 @@ async function ethUsd() {
 }
 
 module.exports = async (req, res) => {
+  if (!allowed(req)) { res.setHeader('Cache-Control', 'no-store'); return res.status(401).json({ error: 'Code required', gate: true }); }
   try {
-    res.setHeader('Cache-Control', 's-maxage=10, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', active() ? 'private, no-store' : 's-maxage=10, stale-while-revalidate=30');
     const cached = await redis('GET', 'gf:coins:cache');
     if (cached) { res.setHeader('Content-Type', 'application/json'); return res.status(200).send(cached); }
 

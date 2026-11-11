@@ -2,6 +2,7 @@
 // Pins the GIF to IPFS, then launches the coin on Pons from the site wallet with no opening buy.
 const { redis } = require('./_redis');
 const { launch } = require('./_pons');
+const { allowed } = require('./_gate');
 
 const MAX_GIF = 3 * 1024 * 1024;
 const day = () => new Date().toISOString().slice(0, 10);
@@ -20,6 +21,7 @@ async function pin(buf, name) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return bad(res, 405, 'POST only');
+  if (!allowed(req)) return bad(res, 401, 'Enter the access code first.');
   if (process.env.LAUNCH_ENABLED !== '1') return bad(res, 503, 'Launching is not open yet.');
   let locked = false;
   try {

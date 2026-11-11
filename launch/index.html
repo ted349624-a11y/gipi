@@ -192,12 +192,35 @@
   .msg.err { color: var(--down); } .msg.ok { color: var(--up); }
   .addr { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--c); overflow-wrap: anywhere; user-select: all; }
   .desc { margin: 0; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
+
+  /* ---------- access code screen ---------- */
+  .gate { position: relative; z-index: 2; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+  .gbox { width: min(360px, 100%); display: grid; gap: 12px; justify-items: center; text-align: center; }
+  .gbox img { filter: drop-shadow(0 0 22px rgba(122,108,255,.6)); animation: bob 5s ease-in-out infinite; }
+  .gbox h1 { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -.03em; background: var(--rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .gbox p { margin: 0; color: var(--muted); }
+  .gfield { display: flex; gap: 8px; width: 100%; }
+  .gfield input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--panel); padding: 0 16px; font-size: 16px; outline: none; text-align: center; letter-spacing: .1em; }
+  .gfield input:focus { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.16); }
+  .gfield .cta { padding: 0 20px; flex: none; }
+  .gate { box-sizing: border-box; width: 100%; }
+  .gbox .msg { min-height: 20px; }
 </style>
 </head>
 <body>
 <div class="sky" aria-hidden="true"></div>
 
-<div class="wrap">
+<div class="gate" id="gate" hidden>
+  <div class="gbox">
+    <img src="/assets/logo.webp" alt="" width="84" height="82">
+    <h1>Launches</h1>
+    <p>Enter the access code.</p>
+    <div class="gfield"><input id="gCode" type="password" aria-label="Access code" placeholder="Access code" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="cta" id="gGo" type="button">Enter</button></div>
+    <p class="msg err" id="gMsg" role="alert"></p>
+  </div>
+</div>
+
+<div class="wrap" id="app">
   <header class="top">
     <a class="brand" href="/"><img src="/assets/logo.webp" alt="">GiphyFun</a>
     <div class="tools">
@@ -273,6 +296,7 @@ let ui = { tab:'mcap', q:'', view: store.get('view') === 'grid' ? 'grid' : 'list
 async function load(){
   try {
     const r = await fetch('/api/coins'); const j = await r.json();
+    if (r.status === 401) return showGate();
     TOKENS = (j.coins || []).map((t, i) => ({ ...t, id: i, a: C[i % 6], b: C[(i + 2) % 6] })); OPEN = !!j.open;
     if (!TOKENS.length && !j.coins) throw 0;
   } catch { TOKENS = []; }
@@ -429,6 +453,26 @@ function launchSheet(){
 }
 $('#launchBtn').addEventListener('click', launchSheet);
 document.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) tokenSheet(TOKENS[+b.dataset.id]); });
+
+/* ---------- access code ---------- */
+function showGate(){
+  const g = $('#gate'); if (!g.hidden) return;
+  g.hidden = false; $('#app').hidden = true; $('#gCode').focus();
+}
+async function tryCode(){
+  const inp = $('#gCode'), msg = $('#gMsg'), btn = $('#gGo');
+  if (!inp.value.trim()) { inp.focus(); return; }
+  btn.disabled = true; msg.textContent = '';
+  try {
+    const r = await fetch('/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ code: inp.value }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.textContent = j.error || 'Wrong code.'; inp.select(); return; }
+    $('#gate').hidden = true; $('#app').hidden = false; inp.value = ''; moveInk(); load();
+  } catch { msg.textContent = 'No connection. Try again.'; }
+  finally { btn.disabled = false; }
+}
+$('#gGo').addEventListener('click', tryCode);
+$('#gCode').addEventListener('keydown', e => { if (e.key === 'Enter') tryCode(); });
 
 /* ---------- boot ---------- */
 setView(ui.view); moveInk(); load();
