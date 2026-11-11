@@ -519,7 +519,9 @@ const GTASKS = [
   { id:'reply',  t:'Comment', hint:'Write it in your own words.', href:xPostId ? 'https://x.com/intent/post?in_reply_to=' + xPostId : xProfile }
 ];
 /* progress is tied to the post, so a new post link asks for the tasks again */
-const gKey = 'tasks_' + (xPostId || 'profile');
+/* bump ROUND to make everyone do the tasks again */
+const ROUND = 2;
+const gKey = 'tasks_r' + ROUND + '_' + (xPostId || 'profile');
 let gDone = new Set((store.get(gKey) || '').split(',').filter(Boolean));
 const validX = u => /^[A-Za-z0-9_]{1,15}$/.test(u);
 const SEGC = ['#ffe95a','#7cff6b','#2bd4ff','#7a6cff','#e04bff','#ff5fa2'];
