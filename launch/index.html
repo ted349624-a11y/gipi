@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GiphyFun Launches</title>
+<meta name="description" content="Launch and discover tokens on GiphyFun.">
+<meta name="theme-color" content="#050507">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: black night sky from the whitelist card. Header, one loud rainbow action, a holographic trending rail, then a quiet sortable list. Single dark look by choice. */
+  :root {
+    --bg: #050507;
+    --panel: #0e0e15;
+    --panel-2: #15151f;
+    --line: rgba(255,255,255,.1);
+    --line-2: rgba(255,255,255,.2);
+    --fg: #f5f4ff;
+    --muted: #9a9bb8;
+    --on-neon: #0a0a12;
+    --up: #7cff6b;
+    --down: #ff6f7d;
+    --y: #ffe95a; --g: #7cff6b; --c: #2bd4ff; --v: #7a6cff; --m: #e04bff; --p: #ff5fa2;
+    --rainbow: linear-gradient(100deg, var(--y), var(--g), var(--c), var(--v), var(--m), var(--p));
+    --holo: linear-gradient(115deg, transparent 34%, rgba(255,95,162,.55) 42%, rgba(255,233,90,.5) 47%, rgba(124,255,107,.45) 51%, rgba(43,212,255,.55) 55%, rgba(122,108,255,.55) 60%, transparent 68%);
+    --sans: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { background: var(--bg); }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.4; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  button, input, select { font: inherit; color: inherit; }
+  svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+
+  .sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .sky::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 44vh; min-height: 220px; background: url("/assets/clouds.jpg") center bottom / cover no-repeat; opacity: .32;
+    -webkit-mask-image: linear-gradient(transparent, #000 75%); mask-image: linear-gradient(transparent, #000 75%); }
+  .sky::after { content: ""; position: absolute; width: 70vmax; height: 70vmax; left: 50%; top: -42vmax; transform: translateX(-50%); border-radius: 50%; filter: blur(90px); opacity: .22;
+    background: conic-gradient(var(--y), var(--g), var(--c), var(--v), var(--m), var(--p), var(--y)); animation: turn 30s linear infinite; }
+  @keyframes turn { to { transform: translateX(-50%) rotate(360deg) } }
+
+  .wrap { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding-block: 0 80px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  /* ---------- header ---------- */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; position: sticky; top: 0; z-index: 5;
+    background: linear-gradient(var(--bg) 70%, transparent); }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; font-weight: 700; font-size: 20px; letter-spacing: -.01em; }
+  .brand img { width: 36px; height: 36px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(122,108,255,.6)); }
+  .tools { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .search { display: flex; align-items: center; gap: 8px; height: 42px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); padding: 0 12px; min-width: 0; transition: border-color .2s, width .3s; width: 42px; overflow: hidden; }
+  .search.open, .search:focus-within { width: min(240px, 46vw); border-color: var(--c); }
+  .search svg { flex: none; width: 18px; height: 18px; color: var(--muted); cursor: pointer; }
+  .search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-size: 16px; }
+  .icon { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); display: grid; place-items: center; cursor: pointer; color: var(--fg); padding: 0; flex: none; transition: border-color .2s; }
+  .icon:hover { border-color: var(--line-2); }
+  .icon svg { width: 18px; height: 18px; }
+
+  /* ---------- hero ---------- */
+  .hero { display: grid; gap: 16px; justify-items: start; padding: 18px 0 28px; }
+  .hero h1 { margin: 0; font-size: clamp(40px, 9vw, 64px); line-height: 1; font-weight: 700; letter-spacing: -.03em; }
+  .hero h1 span { background: var(--rainbow); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: slide 6s linear infinite alternate; }
+  @keyframes slide { to { background-position: 100% 0 } }
+  .hrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .cta { border: 0; border-radius: 16px; padding: 15px 24px; font-weight: 700; font-size: 17px; color: var(--on-neon); cursor: pointer;
+    background: var(--rainbow); background-size: 200% 100%; animation: slide 4s linear infinite alternate; transition: transform .15s, box-shadow .3s; box-shadow: 0 10px 34px rgba(122,108,255,.35); }
+  .cta:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(122,108,255,.55); }
+  .cta:active { transform: translateY(1px); }
+  .sample { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px dashed var(--line-2); border-radius: 999px; padding: 6px 12px; }
+
+  /* ---------- trending ---------- */
+  .sec { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .sec h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+  .arrows { display: flex; gap: 8px; }
+  .rail { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 4px 0 8px; margin: 0 -16px; padding-inline: 16px; scroll-padding-inline: 16px; }
+  .rail::-webkit-scrollbar { display: none; }
+  .tcard { flex: none; width: min(230px, 62vw); scroll-snap-align: start; cursor: pointer; background: none; border: 0; padding: 0; text-align: left; color: inherit; }
+  .art { position: relative; aspect-ratio: 1; border-radius: 26px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: center; transition: transform .35s cubic-bezier(.2,.8,.2,1), border-color .3s; }
+  .tcard:hover .art { transform: translateY(-4px) rotate(-1deg); border-color: var(--line-2); }
+  .art::after { content: ""; position: absolute; inset: -30%; background: var(--holo); background-size: 250% 250%; mix-blend-mode: color-dodge; opacity: .4; animation: sheen 5s ease-in-out infinite; animation-delay: var(--d, 0s); pointer-events: none; }
+  @keyframes sheen { 0%, 100% { background-position: 0% 0% } 50% { background-position: 100% 100% } }
+  .coin { width: 56%; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: clamp(34px, 9vw, 52px); color: var(--on-neon);
+    background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.75), transparent 45%), linear-gradient(140deg, var(--a), var(--b));
+    box-shadow: 0 0 40px color-mix(in srgb, var(--a) 55%, transparent), inset 0 -8px 18px rgba(0,0,0,.25); animation: bob 5s ease-in-out infinite; animation-delay: var(--d, 0s); }
+  @keyframes bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+  .tmeta { padding: 12px 4px 0; display: grid; gap: 2px; }
+  .tname { font-size: 17px; font-weight: 600; display: flex; gap: 8px; min-width: 0; }
+  .tname i { font-style: normal; color: var(--muted); font-weight: 500; }
+  .tname b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tnum { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
+  .tnum strong { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .chg { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .chg.up { color: var(--up); } .chg.down { color: var(--down); }
+
+  /* ---------- tabs + filters ---------- */
+  .tabs { position: relative; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin-top: 34px; border-bottom: 1px solid var(--line); }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; background: none; border: 0; padding: 12px 14px; font-size: 16px; font-weight: 500; color: var(--muted); cursor: pointer; transition: color .2s; }
+  .tab:hover { color: var(--fg); }
+  .tab[aria-selected="true"] { color: var(--fg); font-weight: 600; }
+  .ink { position: absolute; bottom: 0; left: 0; height: 2px; width: 40px; background: var(--rainbow); border-radius: 2px; transition: transform .35s cubic-bezier(.2,.8,.2,1), width .35s cubic-bezier(.2,.8,.2,1); }
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 0; align-items: center; }
+  .select { position: relative; }
+  .select select { appearance: none; -webkit-appearance: none; height: 42px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); padding: 0 38px 0 16px; cursor: pointer; font-size: 15px; }
+  .select svg { position: absolute; right: 14px; top: 50%; width: 14px; height: 14px; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
+  .view { display: flex; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); padding: 3px; }
+  .view button { width: 40px; height: 34px; border: 0; border-radius: 999px; background: none; cursor: pointer; display: grid; place-items: center; color: var(--muted); padding: 0; }
+  .view button[aria-pressed="true"] { background: var(--panel-2); color: var(--fg); }
+  .view svg { width: 16px; height: 16px; }
+  .count { margin-left: auto; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+  /* ---------- list ---------- */
+  .list { display: grid; gap: 8px; }
+  .row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 18px; background: rgba(14,14,21,.72); border: 1px solid var(--line);
+    cursor: pointer; text-align: left; color: inherit; width: 100%; transition: border-color .2s, transform .2s, background .2s; animation: rise .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i) * 30ms); }
+  @keyframes rise { from { transform: translateY(10px); opacity: .01 } to { transform: none; opacity: 1 } }
+  .row:hover { border-color: var(--line-2); background: var(--panel-2); transform: translateX(2px); }
+  .ava { width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center; font-weight: 700; font-size: 22px; color: var(--on-neon);
+    background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.7), transparent 45%), linear-gradient(140deg, var(--a), var(--b)); }
+  .info { min-width: 0; display: grid; gap: 3px; }
+  .nm { display: flex; align-items: center; gap: 6px; font-size: 17px; font-weight: 600; min-width: 0; }
+  .nm b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tk { color: var(--muted); font-size: 13px; font-weight: 500; flex: none; }
+  .grad { flex: none; color: var(--g); font-weight: 600; }
+  .sub { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; min-width: 0; white-space: nowrap; }
+  .sub .by { overflow: hidden; text-overflow: ellipsis; }
+  .bar { flex: 1; max-width: 120px; min-width: 40px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--rainbow); border-radius: 4px; }
+  .val { text-align: right; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+  .val strong { font-size: 17px; font-weight: 600; transition: color .6s; }
+  .val strong.tick-up { color: var(--up); transition: none; } .val strong.tick-down { color: var(--down); transition: none; }
+  .list.grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .list.grid .row { grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 10px; padding: 14px; }
+  .list.grid .row:hover { transform: translateY(-3px); }
+  .list.grid .ava { width: 100%; height: auto; aspect-ratio: 1; border-radius: 16px; font-size: 44px; }
+  .list.grid .val { text-align: left; }
+  .list.grid .sub .bar { display: none; }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; border: 1px dashed var(--line); border-radius: 18px; }
+
+  /* ---------- sheet ---------- */
+  .scrim { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: grid; align-items: end; justify-items: center; animation: fade .2s both; }
+  @keyframes fade { from { opacity: 0 } }
+  .sheet { width: min(480px, 100%); max-height: 92vh; overflow-y: auto; overflow-x: hidden; background: var(--panel); border: 1px solid var(--line-2); border-radius: 26px 26px 0 0; padding: 22px max(18px, env(safe-area-inset-right, 0px)) calc(22px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
+    display: grid; gap: 14px; animation: up .35s cubic-bezier(.2,.8,.2,1) both; position: relative; }
+  .sheet::before { content: ""; position: absolute; top: 0; left: 24px; right: 24px; height: 2px; background: var(--rainbow); border-radius: 2px; }
+  @keyframes up { from { transform: translateY(40px); opacity: 0 } }
+  @media (min-width: 640px) { .scrim { align-items: center; } .sheet { border-radius: 26px; } }
+  .sh { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .sh h3 { margin: 0; font-size: 22px; font-weight: 600; }
+  .f { display: grid; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 500; min-width: 0; }
+  .f input, .f textarea { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font: 500 16px var(--sans); color: var(--fg); outline: none; resize: vertical; width: 100%; min-width: 0; }
+  .f input:focus, .f textarea:focus { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.16); }
+  .two { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px; }
+  .prev { display: flex; align-items: center; gap: 12px; border: 1px dashed var(--line-2); border-radius: 16px; padding: 12px; min-width: 0; }
+  .prev .info b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .msg { margin: 0; font-size: 14px; color: var(--muted); }
+  .msg.warn { color: var(--y); }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .stat { background: var(--panel-2); border-radius: 14px; padding: 12px; display: grid; gap: 2px; min-width: 0; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .stat b { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  :is(a, button, input, select, textarea):focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+  .search input:focus-visible { outline: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .sky::after, .hero h1 span, .cta, .art::after, .coin, .row, .scrim, .sheet { animation: none; }
+    .ink { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/"><img src="/assets/logo.webp" alt="">GiphyFun</a>
+    <div class="tools">
+      <label class="search" id="searchBox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="q" type="search" placeholder="Search tokens" aria-label="Search tokens" autocomplete="off"></label>
+      <a class="icon" href="/" aria-label="Whitelist" title="Whitelist"><svg viewBox="0 0 24 24"><path d="M4 7.500A2.5 2.5 0 0 1 6.5 5H17v3M4 7.500V17a2 2 0 0 0 2 2h13a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H6.500A2.5 2.5 0 0 1 4 7.500zM16 13.500h.01"/></svg></a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <h1><span>Launches</span></h1>
+    <div class="hrow">
+      <button class="cta" id="launchBtn" type="button">Launch a token</button>
+      <span class="sample">Preview · sample data</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="trendH">
+    <div class="sec">
+      <h2 id="trendH">Trending</h2>
+      <div class="arrows">
+        <button class="icon" id="prev" type="button" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+        <button class="icon" id="next" type="button" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="rail" id="rail"></div>
+  </section>
+
+  <section>
+    <div class="tabs" id="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="mcap" aria-selected="true">Market cap</button>
+      <button class="tab" role="tab" data-tab="new" aria-selected="false">New</button>
+      <button class="tab" role="tab" data-tab="active" aria-selected="false">Active</button>
+      <button class="tab" role="tab" data-tab="near" aria-selected="false">Near graduation</button>
+      <button class="tab" role="tab" data-tab="grad" aria-selected="false">Graduated</button>
+      <span class="ink" id="ink"></span>
+    </div>
+    <div class="filters">
+      <div class="select"><select id="pair" aria-label="Pair"><option value="">Any pair</option><option value="ETH">ETH</option><option value="USDC">USDC</option></select><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="view" role="group" aria-label="View">
+        <button type="button" id="vList" aria-pressed="true" aria-label="List view"><svg viewBox="0 0 24 24"><path d="M9 7h11M9 12h11M9 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01"/></svg></button>
+        <button type="button" id="vGrid" aria-pressed="false" aria-label="Grid view"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="6" height="6" rx="1.5"/><rect x="13.5" y="4.5" width="6" height="6" rx="1.5"/><rect x="4.5" y="13.5" width="6" height="6" rx="1.5"/><rect x="13.5" y="13.5" width="6" height="6" rx="1.5"/></svg></button>
+      </div>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetH"></div>
+</div>
+
+<script>
+/* ===== SAMPLE DATA =====
+   Placeholder tokens so the page can be designed before the backend exists.
+   Replace loadTokens() with a fetch to the real API; everything else reads from TOKENS. */
+const C = ['#ffe95a','#7cff6b','#2bd4ff','#7a6cff','#e04bff','#ff5fa2'];
+const SAMPLE = [
+  ['Plushie','PLUSH','NeonSquid',62,'ETH',48200000,2.4,100,9.1],
+  ['Cloudhopper','HOP','SoftCumulus',118,'ETH',21700000,-0.8,100,6.4],
+  ['Holo Card','HOLO','PrismKid',41,'USDC',9300000,5.2,100,8.2],
+  ['Starhop','STAR','LuckyComet',19,'ETH',3100000,-1.2,100,5.0],
+  ['Tentacle','TENT','EightArms',12,'ETH',1300000,-0.3,100,3.3],
+  ['Rainbow File','RFILE','PaperFold',9,'USDC',842000,12.8,91,7.7],
+  ['Moonpuff','PUFF','NightPillow',6,'ETH',511000,7.1,84,6.9],
+  ['Pixel Octo','POCTO','EightBit',4,'ETH',298000,-4.6,72,4.1],
+  ['Jellybean','JELLY','SugarRush',3,'USDC',164000,21.3,58,8.8],
+  ['Sparkle','SPRK','TinyGlint',2,'ETH',97000,3.9,44,5.6],
+  ['Neon Nap','NAP','SleepyVolt',1,'ETH',41000,-9.4,27,2.2],
+  ['Glowworm','GLOW','DimLantern',0.6,'USDC',18500,34.0,15,9.5],
+  ['Fuzz','FUZZ','LintRoller',0.2,'ETH',7200,2.1,6,3.8],
+  ['Cotton','COT','SoftSpun',0.05,'ETH',2900,0.0,2,1.4]
+];
+function loadTokens(){
+  return SAMPLE.map(([name,ticker,by,days,pair,mcap,chg,prog,act], i) =>
+    ({ id:i, name, ticker, by, days, pair, mcap, chg, prog, act, grad: prog >= 100, a: C[i % 6], b: C[(i + 2) % 6] }));
+}
+/* ======================= */
+
+const TOKENS = loadTokens();
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const money = n => n >= 1e9 ? '$' + (n/1e9).toFixed(1) + 'B' : n >= 1e6 ? '$' + (n/1e6).toFixed(1) + 'M' : n >= 1e3 ? '$' + (n/1e3).toFixed(1) + 'K' : '$' + Math.round(n);
+const age = d => d >= 30 ? Math.round(d/30) + 'mo' : d >= 1 ? Math.round(d) + 'd' : Math.max(1, Math.round(d*24)) + 'h';
+const pct = c => (c > 0 ? '+' : '') + c.toFixed(1) + '%';
+const cls = c => c < 0 ? 'down' : 'up';
+const store = { get(k){ try { return localStorage.getItem('gfl_'+k); } catch { return null; } }, set(k,v){ try { localStorage.setItem('gfl_'+k, v); } catch {} } };
+let ui = { tab:'mcap', pair:'', q:'', view: store.get('view') === 'grid' ? 'grid' : 'list' };
+
+/* ---------- trending ---------- */
+function drawRail(){
+  const top = [...TOKENS].sort((a,b) => b.act - a.act).slice(0, 8);
+  $('#rail').innerHTML = top.map((t, i) => `
+    <button class="tcard" type="button" data-id="${t.id}">
+      <div class="art" style="--d:${(-i * .7).toFixed(1)}s"><div class="coin" style="--a:${t.a};--b:${t.b};--d:${(-i * .6).toFixed(1)}s">${esc(t.name[0])}</div></div>
+      <div class="tmeta">
+        <div class="tname"><i>${i + 1}</i><b>${esc(t.name)}</b></div>
+        <div class="tnum"><strong data-m="${t.id}">${money(t.mcap)}</strong><span class="chg ${cls(t.chg)}" data-c="${t.id}">${pct(t.chg)}</span></div>
+      </div>
+    </button>`).join('');
+}
+const rail = $('#rail');
+const step = () => (rail.querySelector('.tcard')?.offsetWidth || 220) + 14;
+$('#prev').addEventListener('click', () => rail.scrollBy({ left: -step() * 2, behavior: 'smooth' }));
+$('#next').addEventListener('click', () => rail.scrollBy({ left: step() * 2, behavior: 'smooth' }));
+
+/* ---------- list ---------- */
+function visible(){
+  let r = TOKENS.filter(t => (!ui.pair || t.pair === ui.pair) && (!ui.q || (t.name + ' ' + t.ticker + ' ' + t.by).toLowerCase().includes(ui.q)));
+  if (ui.tab === 'mcap') r.sort((a,b) => b.mcap - a.mcap);
+  if (ui.tab === 'new') r.sort((a,b) => a.days - b.days);
+  if (ui.tab === 'active') r.sort((a,b) => b.act - a.act);
+  if (ui.tab === 'near') r = r.filter(t => !t.grad).sort((a,b) => b.prog - a.prog);
+  if (ui.tab === 'grad') r = r.filter(t => t.grad).sort((a,b) => b.mcap - a.mcap);
+  return r;
+}
+function drawList(){
+  const r = visible(), el = $('#list');
+  el.classList.toggle('grid', ui.view === 'grid');
+  $('#count').textContent = r.length + (r.length === 1 ? ' token' : ' tokens');
+  el.innerHTML = r.length ? r.map((t, i) => `
+    <button class="row" type="button" data-id="${t.id}" style="--i:${Math.min(i, 12)}">
+      <span class="ava" style="--a:${t.a};--b:${t.b}">${esc(t.name[0])}</span>
+      <span class="info">
+        <span class="nm"><b>${esc(t.name)}</b><span class="tk">$${esc(t.ticker)}</span></span>
+        <span class="sub"><span class="by">${esc(t.by)}</span><span>${age(t.days)}</span>${t.grad ? '<span class="grad">Graduated</span>' : `<span class="bar" title="${t.prog}% to graduation"><i style="width:${t.prog}%"></i></span><span>${t.prog}%</span>`}</span>
+      </span>
+      <span class="val"><strong data-m="${t.id}">${money(t.mcap)}</strong><span class="chg ${cls(t.chg)}" data-c="${t.id}">${pct(t.chg)}</span></span>
+    </button>`).join('') : '<div class="empty">No tokens match. Try another tab or clear the search.</div>';
+}
+function moveInk(){
+  const t = $('.tab[aria-selected="true"]'), ink = $('#ink');
+  ink.style.width = t.offsetWidth - 28 + 'px'; ink.style.transform = 'translateX(' + (t.offsetLeft + 14) + 'px)';
+}
+$('#tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab'); if (!t) return;
+  document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b === t));
+  ui.tab = t.dataset.tab; moveInk(); drawList(); t.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+});
+$('#pair').addEventListener('change', e => { ui.pair = e.target.value; drawList(); });
+$('#q').addEventListener('input', e => { ui.q = e.target.value.trim().toLowerCase(); drawList(); });
+$('#searchBox').addEventListener('click', () => { $('#searchBox').classList.add('open'); $('#q').focus(); });
+$('#q').addEventListener('blur', () => { if (!$('#q').value) $('#searchBox').classList.remove('open'); });
+function setView(v){ ui.view = v; store.set('view', v); $('#vList').setAttribute('aria-pressed', v === 'list'); $('#vGrid').setAttribute('aria-pressed', v === 'grid'); drawList(); }
+$('#vList').addEventListener('click', () => setView('list'));
+$('#vGrid').addEventListener('click', () => setView('grid'));
+
+/* ---------- sheets ---------- */
+const scrim = $('#scrim'), sheet = $('#sheet');
+let lastFocus = null;
+const X = '<button class="icon" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+function openSheet(html){ lastFocus = document.activeElement; sheet.innerHTML = html; scrim.hidden = false; (sheet.querySelector('input') || sheet.querySelector('[data-close]')).focus(); }
+function closeSheet(){ scrim.hidden = true; sheet.innerHTML = ''; if (lastFocus) lastFocus.focus(); }
+scrim.addEventListener('click', e => { if (e.target === scrim || e.target.closest('[data-close]')) closeSheet(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !scrim.hidden) closeSheet(); });
+
+function tokenSheet(t){
+  openSheet(`
+    <div class="sh"><h3 id="sheetH">${esc(t.name)} <span class="tk">$${esc(t.ticker)}</span></h3>${X}</div>
+    <div class="prev"><span class="ava" style="--a:${t.a};--b:${t.b}">${esc(t.name[0])}</span>
+      <span class="info"><b>by ${esc(t.by)}</b><span class="sub">${age(t.days)} old · ${t.pair} pair${t.grad ? ' · graduated' : ''}</span></span></div>
+    <div class="stats">
+      <div class="stat"><span>Market cap</span><b>${money(t.mcap)}</b></div>
+      <div class="stat"><span>24h</span><b class="chg ${cls(t.chg)}">${pct(t.chg)}</b></div>
+      <div class="stat"><span>Graduation</span><b>${t.prog}%</b></div>
+    </div>
+    <p class="msg">Sample token. Trading opens when the launchpad goes live.</p>`);
+}
+function launchSheet(){
+  openSheet(`
+    <div class="sh"><h3 id="sheetH">Launch a token</h3>${X}</div>
+    <div class="prev"><span class="ava" id="pAva" style="--a:${C[0]};--b:${C[2]}">?</span>
+      <span class="info"><b id="pName">Your token</b><span class="sub" id="pTick">$TICKER</span></span></div>
+    <div class="two">
+      <label class="f" for="fName">Name<input id="fName" type="text" maxlength="24" placeholder="Plushie" autocomplete="off"></label>
+      <label class="f" for="fTick">Ticker<input id="fTick" type="text" maxlength="8" placeholder="PLUSH" autocomplete="off" autocapitalize="characters"></label>
+    </div>
+    <label class="f" for="fDesc">Description<textarea id="fDesc" rows="3" maxlength="200" placeholder="What is it about?"></textarea></label>
+    <button class="cta" id="fGo" type="button" style="width:100%">Create token</button>
+    <p class="msg" id="fMsg">Nothing is created yet. This form is a preview.</p>`);
+  const n = $('#fName'), k = $('#fTick');
+  const sync = () => { $('#pName').textContent = n.value.trim() || 'Your token'; $('#pTick').textContent = '$' + (k.value.trim().toUpperCase() || 'TICKER'); $('#pAva').textContent = (n.value.trim()[0] || '?').toUpperCase(); };
+  n.addEventListener('input', sync);
+  k.addEventListener('input', () => { k.value = k.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); sync(); });
+  $('#fGo').addEventListener('click', () => {
+    const m = $('#fMsg'); m.classList.add('warn');
+    m.textContent = !n.value.trim() ? 'Give your token a name.' : !k.value.trim() ? 'Add a ticker, like PLUSH.' : 'Launching is not open yet. Your token was not created.';
+    if (!n.value.trim()) n.focus(); else if (!k.value.trim()) k.focus();
+  });
+}
+$('#launchBtn').addEventListener('click', launchSheet);
+document.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) tokenSheet(TOKENS[+b.dataset.id]); });
+
+/* ---------- sample price motion (remove when real data arrives) ---------- */
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(() => {
+  if (document.hidden) return;
+  for (let k = 0; k < 3; k++) {
+    const t = TOKENS[Math.floor(Math.random() * TOKENS.length)], d = (Math.random() - .48) * .012;
+    t.mcap *= 1 + d; t.chg += d * 100;
+    document.querySelectorAll(`[data-m="${t.id}"]`).forEach(el => {
+      el.textContent = money(t.mcap); el.classList.remove('tick-up', 'tick-down'); el.classList.add(d > 0 ? 'tick-up' : 'tick-down');
+      setTimeout(() => el.classList.remove('tick-up', 'tick-down'), 350);
+    });
+    document.querySelectorAll(`[data-c="${t.id}"]`).forEach(el => { el.textContent = pct(t.chg); el.className = 'chg ' + cls(t.chg); });
+  }
+}, 1800);
+
+/* ---------- boot ---------- */
+drawRail(); setView(ui.view); moveInk();
+addEventListener('resize', moveInk);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveInk);
+</script>
+</body>
+</html>
