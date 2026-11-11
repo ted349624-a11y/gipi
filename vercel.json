@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "api/launch.js": { "maxDuration": 60 },
+    "api/probe.js": { "maxDuration": 60 }
+  }
+}

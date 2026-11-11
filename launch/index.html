@@ -173,6 +173,25 @@
     .sky::after, .hero h1 span, .cta, .art::after, .coin, .row, .scrim, .sheet { animation: none; }
     .ink { transition: none; }
   }
+
+  /* ---------- real coins: GIF art, launch form ---------- */
+  .ava, .coin { overflow: hidden; }
+  .ava img, .coin img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .art .coin { width: 100%; border-radius: 0; box-shadow: none; animation: none; background: var(--panel-2); }
+  .feeTag { font-size: 13px; color: var(--muted); }
+  .drop { position: relative; display: flex; align-items: center; gap: 12px; border: 1px dashed var(--line-2); border-radius: 14px; padding: 12px; cursor: pointer; color: var(--muted); font-size: 14px; min-width: 0; }
+  .drop:hover, .drop.over, .drop:focus-within { border-color: var(--c); color: var(--fg); }
+  .drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .drop .ava { flex: none; }
+  .drop b { color: var(--fg); font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drop > span:nth-child(2) { min-width: 0; }
+  .feeRow { display: flex; align-items: center; gap: 12px; }
+  .f .feeRow input[type=range] { flex: 1; min-width: 0; accent-color: var(--m); padding: 0; border: 0; background: none; box-shadow: none; }
+  .feeRow output { flex: none; width: 56px; text-align: right; font-weight: 600; font-size: 16px; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .cta[disabled] { opacity: .5; cursor: progress; transform: none; animation: none; }
+  .msg.err { color: var(--down); } .msg.ok { color: var(--up); }
+  .addr { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--c); overflow-wrap: anywhere; user-select: all; }
+  .desc { margin: 0; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -191,13 +210,13 @@
     <h1><span>Launches</span></h1>
     <div class="hrow">
       <button class="cta" id="launchBtn" type="button">Launch a token</button>
-      <span class="sample">Preview · sample data</span>
+      <span class="sample">Live on Pons · Robinhood Chain</span>
     </div>
   </section>
 
-  <section aria-labelledby="trendH">
+  <section aria-labelledby="trendH" id="trendSec" hidden>
     <div class="sec">
-      <h2 id="trendH">Trending</h2>
+      <h2 id="trendH">Latest</h2>
       <div class="arrows">
         <button class="icon" id="prev" type="button" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></button>
         <button class="icon" id="next" type="button" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></button>
@@ -208,15 +227,12 @@
 
   <section>
     <div class="tabs" id="tabs" role="tablist">
-      <button class="tab" role="tab" data-tab="mcap" aria-selected="true">Market cap</button>
-      <button class="tab" role="tab" data-tab="new" aria-selected="false">New</button>
-      <button class="tab" role="tab" data-tab="active" aria-selected="false">Active</button>
-      <button class="tab" role="tab" data-tab="near" aria-selected="false">Near graduation</button>
-      <button class="tab" role="tab" data-tab="grad" aria-selected="false">Graduated</button>
+      <button class="tab" role="tab" data-tab="new" aria-selected="true">New</button>
+      <button class="tab" role="tab" data-tab="old" aria-selected="false">Oldest</button>
+      <button class="tab" role="tab" data-tab="fee" aria-selected="false">Highest fee</button>
       <span class="ink" id="ink"></span>
     </div>
     <div class="filters">
-      <div class="select"><select id="pair" aria-label="Pair"><option value="">Any pair</option><option value="ETH">ETH</option><option value="USDC">USDC</option></select><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
       <div class="view" role="group" aria-label="View">
         <button type="button" id="vList" aria-pressed="true" aria-label="List view"><svg viewBox="0 0 24 24"><path d="M9 7h11M9 12h11M9 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01"/></svg></button>
         <button type="button" id="vGrid" aria-pressed="false" aria-label="Grid view"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="6" height="6" rx="1.5"/><rect x="13.5" y="4.5" width="6" height="6" rx="1.5"/><rect x="4.5" y="13.5" width="6" height="6" rx="1.5"/><rect x="13.5" y="13.5" width="6" height="6" rx="1.5"/></svg></button>
@@ -232,51 +248,40 @@
 </div>
 
 <script>
-/* ===== SAMPLE DATA =====
-   Placeholder tokens so the page can be designed before the backend exists.
-   Replace loadTokens() with a fetch to the real API; everything else reads from TOKENS. */
+/* Coins come from /api/coins (launched from this site on Pons). GIFs live on IPFS. */
+const GATEWAY = 'https://gateway.pinata.cloud/ipfs/';
+const PONS = 'https://ponsfamily.com/launchpad/';
+const MAX_GIF = 3 * 1024 * 1024;
 const C = ['#ffe95a','#7cff6b','#2bd4ff','#7a6cff','#e04bff','#ff5fa2'];
-const SAMPLE = [
-  ['Plushie','PLUSH','NeonSquid',62,'ETH',48200000,2.4,100,9.1],
-  ['Cloudhopper','HOP','SoftCumulus',118,'ETH',21700000,-0.8,100,6.4],
-  ['Holo Card','HOLO','PrismKid',41,'USDC',9300000,5.2,100,8.2],
-  ['Starhop','STAR','LuckyComet',19,'ETH',3100000,-1.2,100,5.0],
-  ['Tentacle','TENT','EightArms',12,'ETH',1300000,-0.3,100,3.3],
-  ['Rainbow File','RFILE','PaperFold',9,'USDC',842000,12.8,91,7.7],
-  ['Moonpuff','PUFF','NightPillow',6,'ETH',511000,7.1,84,6.9],
-  ['Pixel Octo','POCTO','EightBit',4,'ETH',298000,-4.6,72,4.1],
-  ['Jellybean','JELLY','SugarRush',3,'USDC',164000,21.3,58,8.8],
-  ['Sparkle','SPRK','TinyGlint',2,'ETH',97000,3.9,44,5.6],
-  ['Neon Nap','NAP','SleepyVolt',1,'ETH',41000,-9.4,27,2.2],
-  ['Glowworm','GLOW','DimLantern',0.6,'USDC',18500,34.0,15,9.5],
-  ['Fuzz','FUZZ','LintRoller',0.2,'ETH',7200,2.1,6,3.8],
-  ['Cotton','COT','SoftSpun',0.05,'ETH',2900,0.0,2,1.4]
-];
-function loadTokens(){
-  return SAMPLE.map(([name,ticker,by,days,pair,mcap,chg,prog,act], i) =>
-    ({ id:i, name, ticker, by, days, pair, mcap, chg, prog, act, grad: prog >= 100, a: C[i % 6], b: C[(i + 2) % 6] }));
-}
-/* ======================= */
 
-const TOKENS = loadTokens();
+let TOKENS = [], OPEN = false, loaded = false;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
-const money = n => n >= 1e9 ? '$' + (n/1e9).toFixed(1) + 'B' : n >= 1e6 ? '$' + (n/1e6).toFixed(1) + 'M' : n >= 1e3 ? '$' + (n/1e3).toFixed(1) + 'K' : '$' + Math.round(n);
-const age = d => d >= 30 ? Math.round(d/30) + 'mo' : d >= 1 ? Math.round(d) + 'd' : Math.max(1, Math.round(d*24)) + 'h';
-const pct = c => (c > 0 ? '+' : '') + c.toFixed(1) + '%';
-const cls = c => c < 0 ? 'down' : 'up';
+const age = ts => { const m = (Date.now() - ts) / 60000; return m < 60 ? Math.max(1, Math.round(m)) + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : m < 43200 ? Math.round(m / 1440) + 'd' : Math.round(m / 43200) + 'mo'; };
+const fee = bps => (bps / 100).toFixed(bps % 100 ? 1 : 0) + '% fee';
+const short = a => a.slice(0, 6) + '…' + a.slice(-4);
+const art = t => `<img src="${GATEWAY}${encodeURIComponent(t.cid)}" alt="" loading="lazy">`;
 const store = { get(k){ try { return localStorage.getItem('gfl_'+k); } catch { return null; } }, set(k,v){ try { localStorage.setItem('gfl_'+k, v); } catch {} } };
-let ui = { tab:'mcap', pair:'', q:'', view: store.get('view') === 'grid' ? 'grid' : 'list' };
+let ui = { tab:'new', q:'', view: store.get('view') === 'grid' ? 'grid' : 'list' };
 
-/* ---------- trending ---------- */
+async function load(){
+  try {
+    const r = await fetch('/api/coins'); const j = await r.json();
+    TOKENS = (j.coins || []).map((t, i) => ({ ...t, id: i, a: C[i % 6], b: C[(i + 2) % 6] })); OPEN = !!j.open;
+  } catch { TOKENS = []; }
+  loaded = true; drawRail(); drawList();
+}
+
+/* ---------- latest rail ---------- */
 function drawRail(){
-  const top = [...TOKENS].sort((a,b) => b.act - a.act).slice(0, 8);
+  const top = TOKENS.slice(0, 8);
+  $('#trendSec').hidden = !top.length;
   $('#rail').innerHTML = top.map((t, i) => `
     <button class="tcard" type="button" data-id="${t.id}">
-      <div class="art" style="--d:${(-i * .7).toFixed(1)}s"><div class="coin" style="--a:${t.a};--b:${t.b};--d:${(-i * .6).toFixed(1)}s">${esc(t.name[0])}</div></div>
+      <div class="art" style="--d:${(-i * .7).toFixed(1)}s"><div class="coin">${art(t)}</div></div>
       <div class="tmeta">
         <div class="tname"><i>${i + 1}</i><b>${esc(t.name)}</b></div>
-        <div class="tnum"><strong data-m="${t.id}">${money(t.mcap)}</strong><span class="chg ${cls(t.chg)}" data-c="${t.id}">${pct(t.chg)}</span></div>
+        <div class="tnum"><strong>$${esc(t.symbol)}</strong><span class="feeTag">${fee(t.feeBps)}</span></div>
       </div>
     </button>`).join('');
 }
@@ -287,27 +292,26 @@ $('#next').addEventListener('click', () => rail.scrollBy({ left: step() * 2, beh
 
 /* ---------- list ---------- */
 function visible(){
-  let r = TOKENS.filter(t => (!ui.pair || t.pair === ui.pair) && (!ui.q || (t.name + ' ' + t.ticker + ' ' + t.by).toLowerCase().includes(ui.q)));
-  if (ui.tab === 'mcap') r.sort((a,b) => b.mcap - a.mcap);
-  if (ui.tab === 'new') r.sort((a,b) => a.days - b.days);
-  if (ui.tab === 'active') r.sort((a,b) => b.act - a.act);
-  if (ui.tab === 'near') r = r.filter(t => !t.grad).sort((a,b) => b.prog - a.prog);
-  if (ui.tab === 'grad') r = r.filter(t => t.grad).sort((a,b) => b.mcap - a.mcap);
+  const r = TOKENS.filter(t => !ui.q || (t.name + ' ' + t.symbol + ' ' + t.token).toLowerCase().includes(ui.q));
+  if (ui.tab === 'new') r.sort((a,b) => b.ts - a.ts);
+  if (ui.tab === 'old') r.sort((a,b) => a.ts - b.ts);
+  if (ui.tab === 'fee') r.sort((a,b) => b.feeBps - a.feeBps || b.ts - a.ts);
   return r;
 }
 function drawList(){
   const r = visible(), el = $('#list');
-  el.classList.toggle('grid', ui.view === 'grid');
-  $('#count').textContent = r.length + (r.length === 1 ? ' token' : ' tokens');
+  el.classList.toggle('grid', ui.view === 'grid' && r.length > 0);
+  $('#count').textContent = loaded ? r.length + (r.length === 1 ? ' coin' : ' coins') : '';
   el.innerHTML = r.length ? r.map((t, i) => `
     <button class="row" type="button" data-id="${t.id}" style="--i:${Math.min(i, 12)}">
-      <span class="ava" style="--a:${t.a};--b:${t.b}">${esc(t.name[0])}</span>
+      <span class="ava" style="--a:${t.a};--b:${t.b}">${art(t)}</span>
       <span class="info">
-        <span class="nm"><b>${esc(t.name)}</b><span class="tk">$${esc(t.ticker)}</span></span>
-        <span class="sub"><span class="by">${esc(t.by)}</span><span>${age(t.days)}</span>${t.grad ? '<span class="grad">Graduated</span>' : `<span class="bar" title="${t.prog}% to graduation"><i style="width:${t.prog}%"></i></span><span>${t.prog}%</span>`}</span>
+        <span class="nm"><b>${esc(t.name)}</b><span class="tk">$${esc(t.symbol)}</span></span>
+        <span class="sub"><span class="by">${short(t.token)}</span><span>${age(t.ts)}</span></span>
       </span>
-      <span class="val"><strong data-m="${t.id}">${money(t.mcap)}</strong><span class="chg ${cls(t.chg)}" data-c="${t.id}">${pct(t.chg)}</span></span>
-    </button>`).join('') : '<div class="empty">No tokens match. Try another tab or clear the search.</div>';
+      <span class="val"><strong>${fee(t.feeBps)}</strong></span>
+    </button>`).join('')
+    : `<div class="empty">${!loaded ? 'Loading coins…' : TOKENS.length ? 'No coins match your search.' : 'No coins yet. Launch the first one.'}</div>`;
 }
 function moveInk(){
   const t = $('.tab[aria-selected="true"]'), ink = $('#ink');
@@ -316,9 +320,8 @@ function moveInk(){
 $('#tabs').addEventListener('click', e => {
   const t = e.target.closest('.tab'); if (!t) return;
   document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b === t));
-  ui.tab = t.dataset.tab; moveInk(); drawList(); t.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+  ui.tab = t.dataset.tab; moveInk(); drawList();
 });
-$('#pair').addEventListener('change', e => { ui.pair = e.target.value; drawList(); });
 $('#q').addEventListener('input', e => { ui.q = e.target.value.trim().toLowerCase(); drawList(); });
 $('#searchBox').addEventListener('click', () => { $('#searchBox').classList.add('open'); $('#q').focus(); });
 $('#q').addEventListener('blur', () => { if (!$('#q').value) $('#searchBox').classList.remove('open'); });
@@ -328,66 +331,92 @@ $('#vGrid').addEventListener('click', () => setView('grid'));
 
 /* ---------- sheets ---------- */
 const scrim = $('#scrim'), sheet = $('#sheet');
-let lastFocus = null;
+let lastFocus = null, busy = false;
 const X = '<button class="icon" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
-function openSheet(html){ lastFocus = document.activeElement; sheet.innerHTML = html; scrim.hidden = false; (sheet.querySelector('input') || sheet.querySelector('[data-close]')).focus(); }
-function closeSheet(){ scrim.hidden = true; sheet.innerHTML = ''; if (lastFocus) lastFocus.focus(); }
+function openSheet(html){ lastFocus = document.activeElement; sheet.innerHTML = html; scrim.hidden = false; (sheet.querySelector('input[type=text]') || sheet.querySelector('[data-close]')).focus(); }
+function closeSheet(){ if (busy) return; scrim.hidden = true; sheet.innerHTML = ''; if (lastFocus) lastFocus.focus(); }
 scrim.addEventListener('click', e => { if (e.target === scrim || e.target.closest('[data-close]')) closeSheet(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && !scrim.hidden) closeSheet(); });
 
 function tokenSheet(t){
   openSheet(`
-    <div class="sh"><h3 id="sheetH">${esc(t.name)} <span class="tk">$${esc(t.ticker)}</span></h3>${X}</div>
-    <div class="prev"><span class="ava" style="--a:${t.a};--b:${t.b}">${esc(t.name[0])}</span>
-      <span class="info"><b>by ${esc(t.by)}</b><span class="sub">${age(t.days)} old · ${t.pair} pair${t.grad ? ' · graduated' : ''}</span></span></div>
-    <div class="stats">
-      <div class="stat"><span>Market cap</span><b>${money(t.mcap)}</b></div>
-      <div class="stat"><span>24h</span><b class="chg ${cls(t.chg)}">${pct(t.chg)}</b></div>
-      <div class="stat"><span>Graduation</span><b>${t.prog}%</b></div>
-    </div>
-    <p class="msg">Sample token. Trading opens when the launchpad goes live.</p>`);
+    <div class="sh"><h3 id="sheetH">${esc(t.name)} <span class="tk">$${esc(t.symbol)}</span></h3>${X}</div>
+    <div class="prev"><span class="ava" style="--a:${t.a};--b:${t.b}">${art(t)}</span>
+      <span class="info"><b>${fee(t.feeBps)}</b><span class="sub">Launched ${age(t.ts)} ago · ETH pair</span></span></div>
+    ${t.description ? `<p class="desc">${esc(t.description)}</p>` : ''}
+    <div class="f">Contract<span class="addr">${esc(t.token)}</span></div>
+    <a class="cta" style="text-align:center;text-decoration:none;display:block" href="${PONS}${encodeURIComponent(t.token)}" target="_blank" rel="noopener">Trade on Pons ↗</a>`);
 }
+
 function launchSheet(){
   openSheet(`
-    <div class="sh"><h3 id="sheetH">Launch a token</h3>${X}</div>
-    <div class="prev"><span class="ava" id="pAva" style="--a:${C[0]};--b:${C[2]}">?</span>
-      <span class="info"><b id="pName">Your token</b><span class="sub" id="pTick">$TICKER</span></span></div>
+    <div class="sh"><h3 id="sheetH">Launch a coin</h3>${X}</div>
+    <label class="drop" id="drop" for="fGif"><span class="ava" id="pAva" style="--a:${C[0]};--b:${C[2]}">?</span>
+      <span><b id="gName">Add a GIF</b><span id="gHint">GIF only, up to 3 MB</span></span>
+      <input id="fGif" type="file" accept="image/gif,.gif"></label>
     <div class="two">
-      <label class="f" for="fName">Name<input id="fName" type="text" maxlength="24" placeholder="Plushie" autocomplete="off"></label>
-      <label class="f" for="fTick">Ticker<input id="fTick" type="text" maxlength="8" placeholder="PLUSH" autocomplete="off" autocapitalize="characters"></label>
+      <label class="f" for="fName">Name<input id="fName" type="text" maxlength="32" placeholder="Plushie" autocomplete="off"></label>
+      <label class="f" for="fTick">Ticker<input id="fTick" type="text" maxlength="10" placeholder="PLUSH" autocomplete="off" autocapitalize="characters"></label>
     </div>
-    <label class="f" for="fDesc">Description<textarea id="fDesc" rows="3" maxlength="200" placeholder="What is it about?"></textarea></label>
-    <button class="cta" id="fGo" type="button" style="width:100%">Create token</button>
-    <p class="msg" id="fMsg">Nothing is created yet. This form is a preview.</p>`);
-  const n = $('#fName'), k = $('#fTick');
-  const sync = () => { $('#pName').textContent = n.value.trim() || 'Your token'; $('#pTick').textContent = '$' + (k.value.trim().toUpperCase() || 'TICKER'); $('#pAva').textContent = (n.value.trim()[0] || '?').toUpperCase(); };
-  n.addEventListener('input', sync);
-  k.addEventListener('input', () => { k.value = k.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); sync(); });
-  $('#fGo').addEventListener('click', () => {
-    const m = $('#fMsg'); m.classList.add('warn');
-    m.textContent = !n.value.trim() ? 'Give your token a name.' : !k.value.trim() ? 'Add a ticker, like PLUSH.' : 'Launching is not open yet. Your token was not created.';
-    if (!n.value.trim()) n.focus(); else if (!k.value.trim()) k.focus();
+    <label class="f" for="fDesc">Description<textarea id="fDesc" rows="2" maxlength="280" placeholder="What is it about?"></textarea></label>
+    <label class="f" for="fFee">Creator fee on each trade (max 9%)
+      <span class="feeRow"><input id="fFee" type="range" min="0" max="9" step="0.5" value="1"><output id="fFeeOut" for="fFee">1%</output></span></label>
+    <label class="f" for="fPay">Where your fees go (Robinhood wallet address)<input id="fPay" type="text" maxlength="42" placeholder="0x…" autocomplete="off" autocapitalize="off" spellcheck="false" style="font-family:ui-monospace,Menlo,monospace;font-size:14px"></label>
+    <button class="cta" id="fGo" type="button" style="width:100%">Launch on Pons</button>
+    <p class="msg" id="fMsg">${OPEN ? 'Free to launch. Your coin goes live on Pons right away.' : 'Launching is not open yet.'}</p>`);
+  const n = $('#fName'), k = $('#fTick'), f = $('#fFee'), g = $('#fGif'), pay = $('#fPay'), msg = $('#fMsg'), go = $('#fGo');
+  let gif = null;
+  const say = (t, c) => { msg.textContent = t; msg.className = 'msg' + (c ? ' ' + c : ''); };
+  k.addEventListener('input', () => { k.value = k.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+  f.addEventListener('input', () => { $('#fFeeOut').textContent = (+f.value) + '%'; });
+  async function take(file){
+    gif = null;
+    if (!file) return;
+    const head = new Uint8Array(await file.slice(0, 6).arrayBuffer());
+    const sig = String.fromCharCode(...head);
+    if (sig !== 'GIF89a' && sig !== 'GIF87a') return say('Only GIF files are accepted.', 'err');
+    if (file.size > MAX_GIF) return say('The GIF must be 3 MB or smaller.', 'err');
+    gif = file; $('#pAva').innerHTML = `<img src="${URL.createObjectURL(file)}" alt="">`;
+    $('#gName').textContent = file.name; $('#gHint').textContent = (file.size / 1048576).toFixed(2) + ' MB';
+    say(OPEN ? 'Free to launch. Your coin goes live on Pons right away.' : 'Launching is not open yet.');
+  }
+  g.addEventListener('change', () => take(g.files[0]));
+  const drop = $('#drop');
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); take(e.dataTransfer.files[0]); });
+  const b64 = file => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(file); });
+
+  go.addEventListener('click', async () => {
+    if (busy) return;
+    if (!gif) return say('Add a GIF for your coin.', 'err');
+    if (n.value.trim().length < 2) { n.focus(); return say('Give your coin a name.', 'err'); }
+    if (k.value.length < 2) { k.focus(); return say('Add a ticker, like PLUSH.', 'err'); }
+    if (!/^0x[a-fA-F0-9]{40}$/.test(pay.value.trim())) { pay.focus(); return say('Enter a valid Robinhood wallet address (0x…).', 'err'); }
+    busy = true; go.disabled = true; go.textContent = 'Launching…'; say('Creating your coin on Pons. This can take up to a minute. Keep this open.');
+    try {
+      const r = await fetch('/api/launch', { method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ name: n.value.trim(), symbol: k.value, description: $('#fDesc').value.trim(), feePct: +f.value, payout: pay.value.trim(), gif: await b64(gif) }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Could not launch. Nothing was created. Try again.');
+      busy = false;
+      openSheet(`
+        <div class="sh"><h3 id="sheetH">${esc(n.value.trim())} is live</h3>${X}</div>
+        <p class="msg ok">${j.confirmed ? 'Your coin was created on Pons.' : 'Your launch was sent and is confirming.'}</p>
+        <div class="f">Contract<span class="addr">${esc(j.token)}</span></div>
+        <a class="cta" style="text-align:center;text-decoration:none;display:block" href="${esc(j.url)}" target="_blank" rel="noopener">Open on Pons ↗</a>`);
+      load();
+    } catch (e) {
+      say(e.message === 'Failed to fetch' ? 'No connection. Nothing was created. Try again.' : e.message, 'err');
+      go.disabled = false; go.textContent = 'Launch on Pons';
+    } finally { busy = false; }
   });
 }
 $('#launchBtn').addEventListener('click', launchSheet);
 document.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) tokenSheet(TOKENS[+b.dataset.id]); });
 
-/* ---------- sample price motion (remove when real data arrives) ---------- */
-if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(() => {
-  if (document.hidden) return;
-  for (let k = 0; k < 3; k++) {
-    const t = TOKENS[Math.floor(Math.random() * TOKENS.length)], d = (Math.random() - .48) * .012;
-    t.mcap *= 1 + d; t.chg += d * 100;
-    document.querySelectorAll(`[data-m="${t.id}"]`).forEach(el => {
-      el.textContent = money(t.mcap); el.classList.remove('tick-up', 'tick-down'); el.classList.add(d > 0 ? 'tick-up' : 'tick-down');
-      setTimeout(() => el.classList.remove('tick-up', 'tick-down'), 350);
-    });
-    document.querySelectorAll(`[data-c="${t.id}"]`).forEach(el => { el.textContent = pct(t.chg); el.className = 'chg ' + cls(t.chg); });
-  }
-}, 1800);
-
 /* ---------- boot ---------- */
-drawRail(); setView(ui.view); moveInk();
+setView(ui.view); moveInk(); load();
 addEventListener('resize', moveInk);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveInk);
 </script>

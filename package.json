@@ -1,0 +1,7 @@
+{
+  "name": "giphyfun",
+  "private": true,
+  "dependencies": {
+    "viem": "^2.21.0"
+  }
+}

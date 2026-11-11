@@ -23,3 +23,20 @@ Setup:
 4. Redeploy.
 
 Usernames are not verified against X: the site records what the visitor types.
+
+## Launchpad (/launch)
+
+Visitors fill in a form (GIF, name, ticker, description, creator fee 0–9%, payout address). `POST /api/launch` pins the GIF to IPFS and launches the coin on Pons (Robinhood Chain) from the site wallet, with no opening buy. The site wallet is the on-chain fee recipient; each visitor's payout address is stored with the coin for later claims.
+
+Environment variables (Vercel → Settings → Environment Variables):
+
+| Name | Purpose |
+|---|---|
+| `LAUNCH_PRIVATE_KEY` | Private key of a dedicated wallet that pays the launch fee. Keep only a small balance in it. |
+| `PINATA_JWT` | Pinata API JWT, used to store GIFs on IPFS. |
+| `LAUNCH_ENABLED` | Set to `1` to open launching. Anything else keeps it closed. |
+| `LAUNCH_PER_IP_PER_DAY` | Launches allowed per visitor address per day (default 1). |
+| `LAUNCH_DAILY_CAP` | Launches allowed in total per day (default 20). |
+| `ADMIN_KEY` | Protects `/api/export` and `/api/probe`. |
+
+Before setting `LAUNCH_ENABLED=1`, open `/api/probe?key=ADMIN_KEY`. It shows the wallet address and balance and the settings copied from the latest Pons launch, without sending a transaction.
