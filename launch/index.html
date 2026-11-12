@@ -50,8 +50,8 @@
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 
   /* ---------- header ---------- */
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; position: sticky; top: 0; z-index: 5;
-    background: linear-gradient(var(--bg) 70%, transparent); }
+  /* no fill, so the sky shows through; the bar scrolls away with the page instead of sticking, since a see-through bar over the list is unreadable */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; position: relative; z-index: 5; background: none; }
   .brand { display: flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; font-weight: 700; font-size: 20px; letter-spacing: -.01em; }
   .brand img { width: 36px; height: 36px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(122,108,255,.6)); }
   .tools { display: flex; align-items: center; gap: 8px; min-width: 0; }
