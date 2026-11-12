@@ -315,7 +315,8 @@ async function load(){
 
 /* ---------- latest rail ---------- */
 function drawRail(){
-  const top = [...TOKENS].sort((a,b) => (b.chg ?? -1e9) - (a.chg ?? -1e9) || b.ts - a.ts).slice(0, 8);
+  /* the official coin is always first; the rest by 24h change */
+  const top = [...TOKENS].sort((a,b) => !!b.official - !!a.official || (b.chg ?? -1e9) - (a.chg ?? -1e9) || b.ts - a.ts).slice(0, 8);
   $('#trendSec').hidden = !top.length;
   $('#rail').innerHTML = top.map((t, i) => `
     <button class="tcard" type="button" data-id="${t.id}">
@@ -339,7 +340,8 @@ function visible(){
   if (ui.tab === 'new') r2.sort((a,b) => b.ts - a.ts);
   if (ui.tab === 'near') r2 = r2.filter(t => !t.grad).sort((a,b) => (b.prog ?? 0) - (a.prog ?? 0));
   if (ui.tab === 'grad') r2 = r2.filter(t => t.grad).sort((a,b) => (b.mcapEth ?? 0) - (a.mcapEth ?? 0));
-  return r2;
+  /* the official coin stays on top of whichever tab it appears in (the sort is stable, so the rest keep their order) */
+  return r2.sort((a,b) => !!b.official - !!a.official);
 }
 function drawList(){
   const r = visible(), el = $('#list');
