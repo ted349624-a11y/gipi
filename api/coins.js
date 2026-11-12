@@ -1,4 +1,4 @@
-// GET /api/coins  →  { coins, open, ethUsd }  newest first, with live market numbers. Payout addresses are not exposed.
+// GET /api/coins  →  { coins, open, ethUsd }  newest first, with live market numbers and the founder's username. Payout addresses and fees are not exposed.
 const { redis, pipeline } = require('./_redis');
 const { market } = require('./_pons');
 const { allowed, active } = require('./_gate');
@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
 
     const coins = all.map(c => {
       const x = m[c.token.toLowerCase()] || {};
-      return { token: c.token, name: c.name, symbol: c.symbol, description: c.description, cid: c.cid, feeBps: c.feeBps, ts: c.ts,
+      return { token: c.token, name: c.name, symbol: c.symbol, description: c.description, cid: c.cid, founder: c.founder || '', ts: c.ts,
         priceEth: x.priceEth ?? null, mcapEth: x.mcapEth ?? null, mcapUsd: x.mcapEth != null && usd ? x.mcapEth * usd : null, chg: x.chg ?? null, prog: x.prog ?? null, grad: !!x.grad };
     });
     const body = JSON.stringify({ coins, open: process.env.LAUNCH_ENABLED === '1', ethUsd: usd });

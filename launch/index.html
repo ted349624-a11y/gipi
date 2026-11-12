@@ -203,6 +203,11 @@
   .gfield input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--panel); padding: 0 16px; font-size: 16px; outline: none; text-align: center; letter-spacing: .1em; }
   .gfield input:focus { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.16); }
   .gfield .cta { padding: 0 20px; flex: none; }
+  .guser { position: relative; } .guser span { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 600; pointer-events: none; }
+  .guser input { text-align: left; letter-spacing: 0; padding-left: 36px; }
+  .me { height: 42px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); display: inline-flex; align-items: center; font-weight: 600; font-size: 14px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hero .lead { margin: -4px 0 0; font-size: clamp(16px, 3.6vw, 20px); color: var(--muted); max-width: 30ch; }
+  .by { color: var(--muted); } .by b { color: inherit; font-weight: 600; }
   .gsep { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 8px; color: var(--muted); font-size: 13px; }
   .gsep::before, .gsep::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
   .gapply { display: grid; gap: 10px; width: 100%; justify-items: center; }
@@ -271,17 +276,29 @@
   </div>
 </div>
 
+<div class="gate" id="nameGate" hidden>
+  <div class="gbox">
+    <img src="/assets/logo.webp" alt="" width="84" height="82">
+    <h1>Pick a username</h1>
+    <p>Your coins show it as their founder. It is yours only and cannot be changed later.</p>
+    <div class="gfield guser"><span>@</span><input id="nName" type="text" aria-label="Username" placeholder="username" maxlength="15" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="cta" id="nGo" type="button">Continue</button></div>
+    <p class="msg err" id="nMsg" role="alert"></p>
+  </div>
+</div>
+
 <div class="wrap" id="app">
   <header class="top">
     <a class="brand" href="/"><img src="/assets/logo.webp" alt="">GiphyFun</a>
     <div class="tools">
       <label class="search" id="searchBox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="q" type="search" placeholder="Search tokens" aria-label="Search tokens" autocomplete="off"></label>
+      <span class="me" id="me" hidden></span>
       <a class="icon" href="/" aria-label="Whitelist" title="Whitelist"><svg viewBox="0 0 24 24"><path d="M4 7.500A2.5 2.5 0 0 1 6.5 5H17v3M4 7.500V17a2 2 0 0 0 2 2h13a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H6.500A2.5 2.5 0 0 1 4 7.500zM16 13.500h.01"/></svg></a>
     </div>
   </header>
 
   <section class="hero">
     <h1><span>Launches</span></h1>
+    <p class="lead">Turn your GIF into a coin with zero commission.</p>
     <div class="hrow">
       <button class="cta" id="launchBtn" type="button">Launch a token</button>
       <span class="sample">Live on Pons · Robinhood Chain</span>
@@ -305,7 +322,6 @@
       <button class="tab" role="tab" data-tab="new" aria-selected="false">New</button>
       <button class="tab" role="tab" data-tab="near" aria-selected="false">Near graduation</button>
       <button class="tab" role="tab" data-tab="grad" aria-selected="false">Graduated</button>
-      <button class="tab" role="tab" data-tab="fee" aria-selected="false">Highest fee</button>
       <span class="ink" id="ink"></span>
     </div>
     <div class="filters">
@@ -330,11 +346,11 @@ const PONS = 'https://ponsfamily.com/launchpad/';
 const MAX_GIF = 3 * 1024 * 1024;
 const C = ['#ffe95a','#7cff6b','#2bd4ff','#7a6cff','#e04bff','#ff5fa2'];
 
-let TOKENS = [], OPEN = false, loaded = false;
+let TOKENS = [], OPEN = false, loaded = false, ME = '';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const age = ts => { const m = (Date.now() - ts) / 60000; return m < 60 ? Math.max(1, Math.round(m)) + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : m < 43200 ? Math.round(m / 1440) + 'd' : Math.round(m / 43200) + 'mo'; };
-const fee = bps => (bps / 100).toFixed(bps % 100 ? 1 : 0) + '% fee';
+const by = t => t.founder ? `<span class="by">by <b>@${esc(t.founder)}</b></span>` : '';
 const money = t => t.mcapUsd != null ? '$' + compact(t.mcapUsd) : t.mcapEth != null ? compact(t.mcapEth) + ' ETH' : '—';
 const compact = n => n >= 1e9 ? (n/1e9).toFixed(1) + 'B' : n >= 1e6 ? (n/1e6).toFixed(1) + 'M' : n >= 1e3 ? (n/1e3).toFixed(1) + 'K' : n >= 10 ? n.toFixed(0) : n.toFixed(2);
 const pct = c => c == null ? '' : (c > 0 ? '+' : '') + c.toFixed(1) + '%';
@@ -348,6 +364,7 @@ async function load(){
   try {
     const r = await fetch('/api/coins'); const j = await r.json();
     if (r.status === 401) return showGate();
+    if (!ME && !(await who())) return;
     TOKENS = (j.coins || []).map((t, i) => ({ ...t, id: i, a: C[i % 6], b: C[(i + 2) % 6] })); OPEN = !!j.open;
     if (!TOKENS.length && !j.coins) throw 0;
   } catch { TOKENS = []; }
@@ -374,13 +391,12 @@ $('#next').addEventListener('click', () => rail.scrollBy({ left: step() * 2, beh
 
 /* ---------- list ---------- */
 function visible(){
-  const r = TOKENS.filter(t => !ui.q || (t.name + ' ' + t.symbol + ' ' + t.token).toLowerCase().includes(ui.q));
+  const r = TOKENS.filter(t => !ui.q || (t.name + ' ' + t.symbol + ' ' + t.token + ' ' + (t.founder || '')).toLowerCase().includes(ui.q));
   let r2 = r;
   if (ui.tab === 'mcap') r2.sort((a,b) => (b.mcapEth ?? -1) - (a.mcapEth ?? -1));
   if (ui.tab === 'new') r2.sort((a,b) => b.ts - a.ts);
   if (ui.tab === 'near') r2 = r2.filter(t => !t.grad).sort((a,b) => (b.prog ?? 0) - (a.prog ?? 0));
   if (ui.tab === 'grad') r2 = r2.filter(t => t.grad).sort((a,b) => (b.mcapEth ?? 0) - (a.mcapEth ?? 0));
-  if (ui.tab === 'fee') r2.sort((a,b) => b.feeBps - a.feeBps || b.ts - a.ts);
   return r2;
 }
 function drawList(){
@@ -392,7 +408,7 @@ function drawList(){
       <span class="ava" style="--a:${t.a};--b:${t.b}">${art(t)}</span>
       <span class="info">
         <span class="nm"><b>${esc(t.name)}</b><span class="tk">$${esc(t.symbol)}</span></span>
-        <span class="sub"><span>${age(t.ts)}</span><span>${fee(t.feeBps)}</span>${t.grad ? '<span class="grad">Graduated</span>' : t.prog != null ? `<span class="bar" title="${t.prog.toFixed(0)}% to graduation"><i style="width:${t.prog}%"></i></span><span>${t.prog.toFixed(0)}%</span>` : ''}</span>
+        <span class="sub"><span>${age(t.ts)}</span>${by(t)}${t.grad ? '<span class="grad">Graduated</span>' : t.prog != null ? `<span class="bar" title="${t.prog.toFixed(0)}% to graduation"><i style="width:${t.prog}%"></i></span><span>${t.prog.toFixed(0)}%</span>` : ''}</span>
       </span>
       <span class="val"><strong>${money(t)}</strong><span class="chg ${cls(t.chg)}">${pct(t.chg)}</span></span>
     </button>`).join('')
@@ -427,7 +443,7 @@ function tokenSheet(t){
   openSheet(`
     <div class="sh"><h3 id="sheetH">${esc(t.name)} <span class="tk">$${esc(t.symbol)}</span></h3>${X}</div>
     <div class="prev"><span class="ava" style="--a:${t.a};--b:${t.b}">${art(t)}</span>
-      <span class="info"><b>${fee(t.feeBps)}</b><span class="sub">Launched ${age(t.ts)} ago · ETH pair</span></span></div>
+      <span class="info"><b>${t.founder ? 'Founder @' + esc(t.founder) : 'Founder unknown'}</b><span class="sub">Launched ${age(t.ts)} ago · ETH pair</span></span></div>
     <div class="stats">
       <div class="stat"><span>Market cap</span><b>${money(t)}</b></div>
       <div class="stat"><span>24h</span><b class="chg ${cls(t.chg)}">${pct(t.chg) || '—'}</b></div>
@@ -441,6 +457,7 @@ function tokenSheet(t){
 function launchSheet(){
   openSheet(`
     <div class="sh"><h3 id="sheetH">Launch a coin</h3>${X}</div>
+    <p class="msg" style="margin:-6px 0 2px">Founder: <b>@${esc(ME)}</b> · one coin per hour</p>
     <label class="drop" id="drop" for="fGif"><span class="ava" id="pAva" style="--a:${C[0]};--b:${C[2]}">?</span>
       <span><b id="gName">Add a GIF</b><span id="gHint">GIF only, up to 3 MB</span></span>
       <input id="fGif" type="file" accept="image/gif,.gif"></label>
@@ -502,7 +519,7 @@ function launchSheet(){
     } finally { busy = false; }
   });
 }
-$('#launchBtn').addEventListener('click', launchSheet);
+$('#launchBtn').addEventListener('click', async () => { if (!ME) await who(); if (ME) launchSheet(); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) tokenSheet(TOKENS[+b.dataset.id]); });
 
 /* ---------- access code + X tasks to apply for one ---------- */
@@ -623,6 +640,32 @@ async function tryCode(){
 }
 $('#gGo').addEventListener('click', tryCode);
 $('#gCode').addEventListener('keydown', e => { if (e.key === 'Enter') tryCode(); });
+
+/* ---------- username: asked once after the code, then kept by the server-side session ---------- */
+function setMe(n){ ME = n; const m = $('#me'); m.textContent = '@' + n; m.hidden = false; }
+async function who(){
+  try {
+    const r = await fetch('/api/name'); const j = await r.json().catch(() => ({}));
+    if (r.status === 401) { showGate(); return false; }
+    if (j.name) { setMe(j.name); return true; }
+  } catch { return true; }   /* offline: let the list show; launching asks again */
+  $('#app').hidden = true; $('#gate').hidden = true; $('#nameGate').hidden = false; $('#nName').focus();
+  return false;
+}
+async function claim(){
+  const inp = $('#nName'), msg = $('#nMsg'), btn = $('#nGo'), v = inp.value.trim().replace(/^@/, '');
+  if (!/^[A-Za-z0-9_]{3,15}$/.test(v)) { msg.textContent = 'Use 3–15 letters, numbers or _'; inp.focus(); return; }
+  btn.disabled = true; msg.textContent = '';
+  try {
+    const r = await fetch('/api/name', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ name: v }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.textContent = j.error || 'Could not save. Try again.'; inp.select(); return; }
+    setMe(j.name); $('#nameGate').hidden = true; $('#app').hidden = false; moveInk(); load();
+  } catch { msg.textContent = 'No connection. Try again.'; }
+  finally { btn.disabled = false; }
+}
+$('#nGo').addEventListener('click', claim);
+$('#nName').addEventListener('keydown', e => { if (e.key === 'Enter') claim(); });
 
 /* ---------- boot ---------- */
 setView(ui.view); moveInk(); load();
