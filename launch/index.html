@@ -193,7 +193,7 @@
   .addr { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--c); overflow-wrap: anywhere; user-select: all; }
   .desc { margin: 0; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
 
-  /* ---------- username screen ---------- */
+  /* ---------- access code and username screens ---------- */
   .gate { position: relative; z-index: 2; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
   .gbox { width: min(360px, 100%); display: grid; gap: 12px; justify-items: center; text-align: center; }
   .gbox img { filter: drop-shadow(0 0 22px rgba(122,108,255,.6)); animation: bob 5s ease-in-out infinite; }
@@ -217,6 +217,16 @@
 </head>
 <body>
 <div class="sky" aria-hidden="true"></div>
+
+<div class="gate" id="gate" hidden>
+  <div class="gbox">
+    <img src="/assets/logo.webp" alt="" width="84" height="82">
+    <h1>Launches</h1>
+    <p>Enter your access code.</p>
+    <div class="gfield"><input id="gCode" type="password" aria-label="Access code" placeholder="Access code" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="cta" id="gGo" type="button">Enter</button></div>
+    <p class="msg err" id="gMsg" role="alert"></p>
+  </div>
+</div>
 
 <div class="gate" id="nameGate" hidden>
   <div class="gbox">
@@ -306,6 +316,7 @@ let ui = { tab:'mcap', q:'', view: store.get('view') === 'grid' ? 'grid' : 'list
 async function load(){
   try {
     const r = await fetch('/api/coins'); const j = await r.json();
+    if (r.status === 401) return showGate();
     if (!ME && !(await who())) return;
     TOKENS = (j.coins || []).map((t, i) => ({ ...t, id: i, a: C[i % 6], b: C[(i + 2) % 6] })); OPEN = !!j.open;
     if (!TOKENS.length && !j.coins) throw 0;
@@ -466,14 +477,34 @@ function launchSheet(){
 $('#launchBtn').addEventListener('click', async () => { if (!ME) await who(); if (ME) launchSheet(); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) tokenSheet(TOKENS[+b.dataset.id]); });
 
-/* ---------- username: asked once on the first visit, then kept by the server-side session ---------- */
+/* ---------- access code: asked first, from everyone ---------- */
+function showGate(){
+  $('#app').hidden = true; $('#nameGate').hidden = true; $('#gate').hidden = false; $('#gCode').focus();
+}
+async function tryCode(){
+  const inp = $('#gCode'), msg = $('#gMsg'), btn = $('#gGo');
+  if (!inp.value.trim()) { inp.focus(); return; }
+  btn.disabled = true; msg.textContent = '';
+  try {
+    const r = await fetch('/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ code: inp.value }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.textContent = j.error || 'Wrong code.'; inp.select(); return; }
+    $('#gate').hidden = true; $('#app').hidden = false; inp.value = ''; moveInk(); load();
+  } catch { msg.textContent = 'No connection. Try again.'; }
+  finally { btn.disabled = false; }
+}
+$('#gGo').addEventListener('click', tryCode);
+$('#gCode').addEventListener('keydown', e => { if (e.key === 'Enter') tryCode(); });
+
+/* ---------- username: asked once after the code, then kept by the server-side session ---------- */
 function setMe(n){ ME = n; const m = $('#me'); m.textContent = '@' + n; m.hidden = false; }
 async function who(){
   try {
     const r = await fetch('/api/name'); const j = await r.json().catch(() => ({}));
+    if (r.status === 401) { showGate(); return false; }
     if (j.name) { setMe(j.name); return true; }
   } catch { return true; }   /* offline: let the list show; launching asks again */
-  $('#app').hidden = true; $('#nameGate').hidden = false; $('#nName').focus();
+  $('#app').hidden = true; $('#gate').hidden = true; $('#nameGate').hidden = false; $('#nName').focus();
   return false;
 }
 async function claim(){
