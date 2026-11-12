@@ -100,18 +100,27 @@ async function walletInfo() {
 }
 
 // Live numbers for each coin, read from its bonding curve. Prices are in ETH.
-async function market(coins) {
-  const client = createPublicClient({ chain, transport: http(RPC, { timeout: 12000, batch: { batchSize: 80, wait: 10 } }) });
-  const out = {};
-  await Promise.all(coins.filter(c => c.curve).map(async c => {
+// Live curve state for each coin. The public RPC refuses large JSON-RPC batches, so reads go out in small batches,
+// a few coins at a time, and a coin whose batch failed is read again on its own before giving up.
+async function market(coins, report) {
+  const batched = createPublicClient({ chain, transport: http(RPC, { timeout: 8000, retryCount: 1, batch: { batchSize: 8, wait: 5 } }) });
+  const single = createPublicClient({ chain, transport: http(RPC, { timeout: 8000, retryCount: 1 }) });
+  const out = {}; let failed = 0, lastError = '';
+  const read = async (client, c) => {
     const call = fn => client.readContract({ address: c.curve, abi: curveAbi, functionName: fn });
-    try {
-      const [res, real, thr, grad] = await Promise.all([call('getReserves'), call('realQuoteReserve'), call('graduationThreshold'), call('graduated')]);
-      if (res[1] === 0n) return;
-      const priceEth = Number(res[0]) / Number(res[1]);
-      out[c.token.toLowerCase()] = { priceEth, mcapEth: priceEth * SUPPLY, prog: thr > 0n ? Math.min(100, Number(real * 10000n / thr) / 100) : 0, grad };
-    } catch {}
-  }));
+    const [res, real, thr, grad] = await Promise.all([call('getReserves'), call('realQuoteReserve'), call('graduationThreshold'), call('graduated')]);
+    if (res[1] === 0n) return;
+    const priceEth = Number(res[0]) / Number(res[1]);
+    out[c.token.toLowerCase()] = { priceEth, mcapEth: priceEth * SUPPLY, prog: thr > 0n ? Math.min(100, Number(real * 10000n / thr) / 100) : 0, grad };
+  };
+  const list = coins.filter(c => c.curve);
+  for (let i = 0; i < list.length; i += 6) {
+    await Promise.all(list.slice(i, i + 6).map(async c => {
+      try { await read(batched, c); }
+      catch { try { await read(single, c); } catch (e) { failed++; lastError = String(e.shortMessage || e.message || e).slice(0, 160); } }
+    }));
+  }
+  if (report) Object.assign(report, { asked: list.length, ok: Object.keys(out).length, failed, lastError });
   return out;
 }
 

@@ -27,8 +27,18 @@ module.exports = async (req, res) => {
     const all = raw.filter(Boolean).map(s => JSON.parse(s));
     const [m, usd] = await Promise.all([market(all).catch(() => ({})), ethUsd()]);
 
+    // Keep the last numbers that were read for each coin, so one failed read shows slightly old numbers instead of a dash.
+    const fresh = Object.keys(m);
+    if (fresh.length) await pipeline(fresh.map(id => ['HSET', 'gf:mk', id, JSON.stringify(m[id])])).catch(() => {});
+    const missing = all.map(c => c.token.toLowerCase()).filter(id => !m[id]);
+    if (missing.length) {
+      const old = await redis('HMGET', 'gf:mk', ...missing).catch(() => []);
+      missing.forEach((id, i) => { if (old && old[i]) m[id] = { ...JSON.parse(old[i]), stale: true }; });
+    }
+
+
     // Price history: one snapshot per coin every 10 minutes, kept for a day, to show the change.
-    const now = Date.now(), live = all.filter(c => m[c.token.toLowerCase()]);
+    const now = Date.now(), live = all.filter(c => m[c.token.toLowerCase()] && !m[c.token.toLowerCase()].stale);
     const hist = await pipeline(live.flatMap(c => { const k = 'gf:px:' + c.token.toLowerCase(); return [['ZRANGEBYSCORE', k, now - DAY, '+inf', 'LIMIT', 0, 1], ['ZREVRANGE', k, 0, 0]]; }));
     const writes = [];
     live.forEach((c, i) => {
