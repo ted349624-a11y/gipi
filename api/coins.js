@@ -39,9 +39,15 @@ module.exports = async (req, res) => {
     });
     if (writes.length) await pipeline(writes);
 
+    // The one official coin: the first $GIPHY launched by the GIPHY username (usernames are unique, so nobody else can match).
+    // OFFICIAL_TOKENS (comma-separated contract addresses) overrides this.
+    const env = (process.env.OFFICIAL_TOKENS || '').toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
+    const first = all.filter(c => String(c.founder || '').toLowerCase() === 'giphy' && c.symbol === 'GIPHY').sort((a, b) => a.ts - b.ts)[0];
+    const official = new Set(env.length ? env : first ? [first.token.toLowerCase()] : []);
+
     const coins = all.map(c => {
       const x = m[c.token.toLowerCase()] || {};
-      return { token: c.token, name: c.name, symbol: c.symbol, description: c.description, cid: c.cid, founder: c.founder || '', ts: c.ts,
+      return { token: c.token, name: c.name, symbol: c.symbol, description: c.description, cid: c.cid, founder: c.founder || '', official: official.has(c.token.toLowerCase()), ts: c.ts,
         priceEth: x.priceEth ?? null, mcapEth: x.mcapEth ?? null, mcapUsd: x.mcapEth != null && usd ? x.mcapEth * usd : null, chg: x.chg ?? null, prog: x.prog ?? null, grad: !!x.grad };
     });
     const body = JSON.stringify({ coins, open: process.env.LAUNCH_ENABLED === '1', ethUsd: usd });

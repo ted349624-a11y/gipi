@@ -207,6 +207,8 @@
   .guser input { text-align: left; letter-spacing: 0; padding-left: 36px; }
   .me { height: 42px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); display: inline-flex; align-items: center; font-weight: 600; font-size: 14px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hero .lead { margin: -4px 0 0; font-size: clamp(16px, 3.6vw, 20px); color: var(--muted); max-width: 30ch; }
+  .off { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 20px; padding: 0 8px 0 5px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .02em; line-height: 1; color: var(--on-neon); background: var(--rainbow); vertical-align: middle; }
+  .off svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
   .by { color: var(--muted); } .by b { color: inherit; font-weight: 600; }
   .gbox { grid-template-columns: minmax(0, 1fr); }
   .gate { box-sizing: border-box; width: 100%; }
@@ -290,6 +292,7 @@ let TOKENS = [], OPEN = false, loaded = false, ME = '';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const age = ts => { const m = (Date.now() - ts) / 60000; return m < 60 ? Math.max(1, Math.round(m)) + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : m < 43200 ? Math.round(m / 1440) + 'd' : Math.round(m / 43200) + 'mo'; };
+const off = t => t.official ? '<span class="off" title="Official GiphyFun coin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.500L19 7.5"/></svg>Official</span>' : '';
 const by = t => t.founder ? `<span class="by">by <b>@${esc(t.founder)}</b></span>` : '';
 const money = t => t.mcapUsd != null ? '$' + compact(t.mcapUsd) : t.mcapEth != null ? compact(t.mcapEth) + ' ETH' : '—';
 const compact = n => n >= 1e9 ? (n/1e9).toFixed(1) + 'B' : n >= 1e6 ? (n/1e6).toFixed(1) + 'M' : n >= 1e3 ? (n/1e3).toFixed(1) + 'K' : n >= 10 ? n.toFixed(0) : n.toFixed(2);
@@ -318,7 +321,7 @@ function drawRail(){
     <button class="tcard" type="button" data-id="${t.id}">
       <div class="art" style="--d:${(-i * .7).toFixed(1)}s"><div class="coin">${art(t)}</div></div>
       <div class="tmeta">
-        <div class="tname"><i>${i + 1}</i><b>${esc(t.name)}</b></div>
+        <div class="tname"><i>${i + 1}</i><b>${esc(t.name)}</b>${off(t)}</div>
         <div class="tnum"><strong>${money(t)}</strong><span class="chg ${cls(t.chg)}">${pct(t.chg)}</span></div>
       </div>
     </button>`).join('');
@@ -346,7 +349,7 @@ function drawList(){
     <button class="row" type="button" data-id="${t.id}" style="--i:${Math.min(i, 12)}">
       <span class="ava" style="--a:${t.a};--b:${t.b}">${art(t)}</span>
       <span class="info">
-        <span class="nm"><b>${esc(t.name)}</b><span class="tk">$${esc(t.symbol)}</span></span>
+        <span class="nm"><b>${esc(t.name)}</b><span class="tk">$${esc(t.symbol)}</span>${off(t)}</span>
         <span class="sub"><span>${age(t.ts)}</span>${by(t)}${t.grad ? '<span class="grad">Graduated</span>' : t.prog != null ? `<span class="bar" title="${t.prog.toFixed(0)}% to graduation"><i style="width:${t.prog}%"></i></span><span>${t.prog.toFixed(0)}%</span>` : ''}</span>
       </span>
       <span class="val"><strong>${money(t)}</strong><span class="chg ${cls(t.chg)}">${pct(t.chg)}</span></span>
@@ -380,7 +383,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && !scrim.hidden) clos
 
 function tokenSheet(t){
   openSheet(`
-    <div class="sh"><h3 id="sheetH">${esc(t.name)} <span class="tk">$${esc(t.symbol)}</span></h3>${X}</div>
+    <div class="sh"><h3 id="sheetH">${esc(t.name)} <span class="tk">$${esc(t.symbol)}</span> ${off(t)}</h3>${X}</div>
     <div class="prev"><span class="ava" style="--a:${t.a};--b:${t.b}">${art(t)}</span>
       <span class="info"><b>${t.founder ? 'Founder @' + esc(t.founder) : 'Founder unknown'}</b><span class="sub">Launched ${age(t.ts)} ago · ETH pair</span></span></div>
     <div class="stats">
