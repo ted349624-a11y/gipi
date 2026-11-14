@@ -507,8 +507,8 @@ function launchSheet(){
     if (!/^0x[a-fA-F0-9]{40}$/.test(pay.value.trim())) { pay.focus(); return say('Enter a valid Robinhood wallet address (0x…).', 'err'); }
     busy = true; go.disabled = true; go.textContent = 'Launching…'; say('Creating your coin on Pons. This can take up to a minute. Keep this open.');
     try {
-      const r = await fetch('/api/launch', { method:'POST', headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ name: n.value.trim(), symbol: k.value, description: $('#fDesc').value.trim(), feePct: +f.value, payout: pay.value.trim(), gif: await b64(gif) }) });
+      const r = await fetch('/api/launch', withSid({ method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ name: n.value.trim(), symbol: k.value, description: $('#fDesc').value.trim(), feePct: +f.value, payout: pay.value.trim(), gif: await b64(gif) }) }));
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Could not launch. Nothing was created. Try again.');
       busy = false;
@@ -649,15 +649,23 @@ async function tryCode(){
 $('#gGo').addEventListener('click', tryCode);
 $('#gCode').addEventListener('keydown', e => { if (e.key === 'Enter') tryCode(); });
 
-/* ---------- username: asked once after the code, then kept by the server-side session ---------- */
-function setMe(n){ ME = n; const m = $('#me'); m.textContent = '@' + n; m.hidden = false; }
+/* ---------- username: asked once, then kept by the session ---------- */
+/* The session token lives in a cookie and in local storage, and goes out in a header too, so losing one still
+   keeps the name. The username screen only comes back when the server actually says the session is gone. */
+const sid = () => { const t = store.get('sid'); return /^[a-f0-9]{48}$/.test(t || '') ? t : ''; };
+function withSid(opts = {}){
+  const t = sid(); if (!t) return opts;
+  return { ...opts, headers: { ...(opts.headers || {}), 'X-GF-Session': t } };
+}
+function setMe(n){ ME = n; store.set('me', n); const m = $('#me'); m.textContent = '@' + n; m.hidden = false; }
+function askName(){ $('#app').hidden = true; $('#gate').hidden = true; $('#nameGate').hidden = false; $('#nName').focus(); }
 async function who(){
-  try {
-    const r = await fetch('/api/name'); const j = await r.json().catch(() => ({}));
-    if (r.status === 401) { showGate(); return false; }
-    if (j.name) { setMe(j.name); return true; }
-  } catch { return true; }   /* offline: let the list show; launching asks again */
-  $('#app').hidden = true; $('#gate').hidden = true; $('#nameGate').hidden = false; $('#nName').focus();
+  let ok = false, j = null;
+  try { const r = await fetch('/api/name', withSid({ cache: 'no-store' })); ok = r.ok; if (r.status === 401) { showGate(); return false; } j = await r.json().catch(() => null); }
+  catch {}
+  if (j && j.name) { setMe(j.name); return true; }
+  if (!ok) { const n = store.get('me'); if (n) setMe(n); return true; }   /* server trouble: keep the page usable */
+  askName();
   return false;
 }
 async function claim(){
@@ -665,9 +673,10 @@ async function claim(){
   if (!/^[A-Za-z0-9_]{3,15}$/.test(v)) { msg.textContent = 'Use 3–15 letters, numbers or _'; inp.focus(); return; }
   btn.disabled = true; msg.textContent = '';
   try {
-    const r = await fetch('/api/name', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ name: v }) });
+    const r = await fetch('/api/name', withSid({ method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ name: v }) }));
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { msg.textContent = j.error || 'Could not save. Try again.'; inp.select(); return; }
+    if (j.token) store.set('sid', j.token);
     setMe(j.name); $('#nameGate').hidden = true; $('#app').hidden = false; moveInk(); load();
   } catch { msg.textContent = 'No connection. Try again.'; }
   finally { btn.disabled = false; }

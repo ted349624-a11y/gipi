@@ -1,5 +1,6 @@
 // GET  /api/name            →  { name }   the username this browser holds, or "".
-// POST /api/name { name }   →  { name }   claims a username. Names are unique and cannot be changed afterwards.
+// POST /api/name { name }   →  { name, token }   claims a username. Names are unique and cannot be changed afterwards.
+// The token is the session: it comes back as a cookie and in the body, and the page may send it as X-GF-Session.
 const crypto = require('crypto');
 const { redis } = require('./_redis');
 const { allowed } = require('./_gate');
@@ -26,7 +27,7 @@ module.exports = async (req, res) => {
     if ((await redis('HSETNX', 'gf:names', name.toLowerCase(), JSON.stringify({ name, ts: Date.now() }))) !== 1) return res.status(409).json({ error: 'That username is taken.' });
     await redis('HSET', 'gf:sessions', token, name);
     res.setHeader('Set-Cookie', `gf_user=${token}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`);
-    return res.status(200).json({ name });
+    return res.status(200).json({ name, token });
   } catch (e) {
     console.error(e);
     return res.status(e.code === 'NO_DB' ? 503 : 500).json({ error: e.code === 'NO_DB' ? 'Database is not connected yet.' : 'Could not save. Try again.' });
