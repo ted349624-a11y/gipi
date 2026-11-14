@@ -29,17 +29,17 @@
 <style>
   /* Layout: one holographic card, centered on black. The lower part of the card is a deck of tasks shown one at a time; when the last is done the card spins and lands on its back, which carries Early Access and the referral link. Single dark look by choice, colors taken from the logo. */
   :root {
-    --bg: #050507;
-    --card: #0a0a10;
-    --slip: #15151f;
+    --bg: #050706;
+    --card: #0a0d0b;
+    --slip: #141814;
     --line: rgba(255,255,255,.14);
-    --fg: #f5f4ff;
-    --muted: #a2a3bd;
-    --on-neon: #0a0a12;
-    --bad: #ff5f8a;
-    --y: #ffe95a; --g: #7cff6b; --c: #2bd4ff; --v: #7a6cff; --m: #e04bff; --p: #ff5fa2;
-    --rainbow: linear-gradient(100deg, var(--y), var(--g), var(--c), var(--v), var(--m), var(--p));
-    --holo: linear-gradient(115deg, transparent 36%, rgba(255,95,162,.5) 42%, rgba(255,233,90,.45) 47%, rgba(124,255,107,.4) 51%, rgba(43,212,255,.5) 55%, rgba(122,108,255,.5) 60%, transparent 66%);
+    --fg: #f2f6f2;
+    --muted: #97a399;
+    --on-neon: #0a0d0b;
+    --bad: #ff6f85;
+    --y: #ffffff; --g: #e4ebe4; --c: #b3c2b6; --v: #8a9a8e; --m: #cdd7cf; --p: #f4f8f4;
+    --rainbow: linear-gradient(100deg, var(--y), var(--m), var(--v), var(--g), var(--c), var(--p));
+    --holo: linear-gradient(115deg, transparent 34%, rgba(255,255,255,.22) 42%, rgba(196,210,199,.18) 47%, rgba(255,255,255,.34) 51%, rgba(170,186,175,.2) 55%, rgba(255,255,255,.26) 60%, transparent 68%);
     --sans: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     --rx: 0deg; --ry: 0deg; --hx: 30%; --hy: 20%; --prog: 0;
@@ -92,7 +92,7 @@
   .prev svg { width: 14px; height: 14px; stroke-width: 2.2; }
 
   .art { flex: 1; min-height: 0; display: grid; place-items: center; }
-  .art img { width: 62%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 0 26px rgba(122,108,255,.55)); animation: float 6s ease-in-out infinite; }
+  .art img { width: 62%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 0 26px rgba(205,220,208,.4)); animation: float 6s ease-in-out infinite; }
   @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-7px) } }
 
   .segs { display: flex; gap: 5px; }
@@ -122,7 +122,7 @@
   .hint.err { color: var(--bad); }
 
   .field { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.07); border: 1px solid var(--line); border-radius: 999px; padding: 4px 4px 4px 14px; min-width: 0; transition: border-color .2s, box-shadow .2s; }
-  .field:focus-within { border-color: var(--c); box-shadow: 0 0 0 3px rgba(43,212,255,.18); }
+  .field:focus-within { border-color: var(--c); box-shadow: 0 0 0 3px rgba(179,194,182,.22); }
   .field.bad { border-color: var(--bad); animation: shake .4s; }
   .field.busy { opacity: .6; pointer-events: none; }
   @keyframes shake { 20% { transform: translateX(-6px) } 40% { transform: translateX(5px) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
@@ -130,16 +130,16 @@
   .field input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg); font: 500 16px var(--sans); padding: 8px 0; }
   /* 16px keeps iOS from zooming the page when the field is focused */
   .field input.addr { font: 500 16px var(--mono); letter-spacing: -.04em; }
-  .field input::placeholder { color: rgba(162,163,189,.6); }
+  .field input::placeholder { color: rgba(151,163,153,.6); }
   .go { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; padding: 0;
     color: var(--muted); background: rgba(255,255,255,.1); transition: .25s; }
   .go svg { width: 17px; height: 17px; stroke-width: 2.2; }
-  .field.ok .go { color: var(--on-neon); background: var(--rainbow); box-shadow: 0 0 18px rgba(43,212,255,.5); }
+  .field.ok .go { color: var(--on-neon); background: var(--rainbow); box-shadow: 0 0 18px rgba(205,220,208,.38); }
 
   .acts { display: flex; align-items: center; gap: 12px; }
   .btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border: 0; border-radius: 999px; padding: 10px 16px; cursor: pointer; text-decoration: none;
     font: 600 15px var(--sans); color: var(--on-neon); background: var(--rainbow); background-size: 180% 100%; transition: background-position .5s, transform .15s, box-shadow .3s; }
-  .btn:hover { background-position: 100% 0; transform: translateY(-1px); box-shadow: 0 8px 26px rgba(122,108,255,.45); }
+  .btn:hover { background-position: 100% 0; transform: translateY(-1px); box-shadow: 0 8px 26px rgba(205,220,208,.34); }
   .btn:active { transform: translateY(1px); }
   .btn.line { background: none; color: var(--fg); border: 1px solid rgba(255,255,255,.35); }
   .btn.line:hover { border-color: var(--fg); box-shadow: none; }
