@@ -1,6 +1,6 @@
 # GiphyFun Whitelist
 
-Single-page whitelist site for [@giphyfun](https://x.com/giphyfun). Static files only, no build step.
+Single-page whitelist site for [@giphydotfun](https://x.com/giphydotfun). Static files only, no build step.
 
 ## Setup
 

@@ -19,7 +19,7 @@
 <meta property="og:description" content="Complete the tasks on X and join the waitlist.">
 <meta property="og:image" content="/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:site" content="@giphyfun">
+<meta name="twitter:site" content="@giphydotfun">
 <meta name="twitter:title" content="GiphyFun Waitlist">
 <meta name="twitter:description" content="Complete the tasks on X and join the waitlist.">
 <meta name="twitter:image" content="/og-image.jpg">
@@ -217,8 +217,8 @@
 <script>
 /* ===== SETTINGS ===== */
 const CONFIG = {
-  handle: 'giphyfun',
-  POST_URL: 'https://x.com/giphyfun/status/2120614230265393555'
+  handle: 'giphydotfun',
+  POST_URL: ''   /* put the new post link here; until then the post tasks open the profile */
 };
 /* ==================== */
 
@@ -259,9 +259,9 @@ const N = STEPS.length;
 
 const $ = s => document.querySelector(s);
 const store = {
-  get(k){ try { return JSON.parse(localStorage.getItem('gfw_'+k)); } catch { return null; } },
-  set(k,v){ try { localStorage.setItem('gfw_'+k, JSON.stringify(v)); } catch {} },
-  del(k){ try { localStorage.removeItem('gfw_'+k); } catch {} }
+  get(k){ try { return JSON.parse(localStorage.getItem('gfw3_'+k)); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem('gfw3_'+k, JSON.stringify(v)); } catch {} },
+  del(k){ try { localStorage.removeItem('gfw3_'+k); } catch {} }
 };
 let state = { step: Math.min(N, store.get('step') || 0), user: store.get('user') || '', wallet: store.get('wallet') || '', opened: store.get('opened') || {} };
 if (!validUser(state.user)) state.step = 0;

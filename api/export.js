@@ -3,6 +3,7 @@
 // Add &list=wait for the waitlist (/apply) or &list=launch for launch-code applicants.
 // Set ADMIN_KEY in the Vercel project settings, then redeploy.
 const { redis } = require('./_redis');
+const { ROUND, KEY } = require('./_apply');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 module.exports = async (req, res) => {
@@ -14,7 +15,7 @@ module.exports = async (req, res) => {
   if (given !== key) return res.status(401).send('Wrong key. It must match the ADMIN_KEY value in Vercel exactly.');
   if (req.query.list === 'launch') {
     try {
-      const raw = await redis('HGETALL', 'gf:apply');
+      const raw = await redis('HGETALL', KEY);
       const rows = []; for (let i = 0; i < (raw || []).length; i += 2) rows.push(JSON.parse(raw[i + 1]));
       rows.sort((x, y) => x.ts - y.ts);
       if (req.query.format === 'csv') {
@@ -28,7 +29,7 @@ module.exports = async (req, res) => {
       return res.status(200).send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>GiphyFun launch applicants</title>
 <style>body{margin:0;padding:16px;background:#050507;color:#f5f4ff;font:14px system-ui,sans-serif}h1{font-size:20px;margin:0 0 4px}p{color:#a2a3bd;margin:0 0 14px}a{color:#2bd4ff}
 .s{overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #26263a;white-space:nowrap}th{color:#a2a3bd;font-weight:600}</style></head>
-<body><h1>Launch code applicants</h1><p>${rows.length} total (UTC times) · <a href="?key=${k}&list=launch&format=csv">Download CSV</a> · <a href="?key=${k}">Whitelist sign-ups</a></p>
+<body><h1>Launch code applicants <span style="color:#a2a3bd;font-weight:400">· round ${ROUND}</span></h1><p>${rows.length} total (UTC times) · <a href="?key=${k}&list=launch&format=csv">Download CSV</a> · <a href="?key=${k}">Whitelist sign-ups</a></p>
 <div class="s"><table><thead><tr><th>#</th><th>Username</th><th>Applied</th></tr></thead><tbody>${body || '<tr><td colspan="3">No applicants yet.</td></tr>'}</tbody></table></div></body></html>`);
     } catch (e) {
       console.error(e);
