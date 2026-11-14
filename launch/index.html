@@ -510,7 +510,9 @@ function launchSheet(){
       const r = await fetch('/api/launch', withSid({ method:'POST', headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({ name: n.value.trim(), symbol: k.value, description: $('#fDesc').value.trim(), feePct: +f.value, payout: pay.value.trim(), gif: await b64(gif) }) }));
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || 'Could not launch. Nothing was created. Try again.');
+      if (!r.ok) throw new Error(j.error || (r.status === 504 ? 'This took too long. Check the list in a minute before trying again: your coin may still be on its way.'
+        : r.status === 413 ? 'This GIF is too large to send. Try a smaller one.'
+        : 'Could not launch (error ' + r.status + '). Nothing was created. Try again.'));
       busy = false;
       openSheet(`
         <div class="sh"><h3 id="sheetH">${esc(n.value.trim())} is live</h3>${X}</div>

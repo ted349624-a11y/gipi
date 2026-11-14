@@ -17,7 +17,7 @@ async function pin(buf, name) {
   fd.append('file', new Blob([buf], { type: 'image/gif' }), name + '.gif');
   const r = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', { method: 'POST', headers: { Authorization: 'Bearer ' + jwt }, body: fd });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j.IpfsHash) throw new Error('Could not store the GIF');
+  if (!r.ok || !j.IpfsHash) { const e = new Error('Could not store the GIF (' + r.status + ')'); e.code = 'PIN'; throw e; }
   return j.IpfsHash;
 }
 
@@ -69,8 +69,17 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true, token: out.token, tx: out.hash, confirmed: out.confirmed, url: 'https://ponsfamily.com/launchpad/' + out.token });
   } catch (e) {
     console.error(e);
-    const known = { NO_KEY: 'Launching is not set up yet.', NO_PIN: 'Launching is not set up yet.', NO_DB: 'Launching is not set up yet.' }[e.code];
-    return bad(res, e.code === 'SIM' ? 422 : 500, known || (e.code === 'SIM' || e.code === 'TX' ? e.message : 'Could not launch. Nothing was created. Try again.'));
+    // Say what actually went wrong: a generic line here hid a wrong wallet key and an empty wallet behind the same words.
+    const setup = 'Launching is not set up yet.';
+    const [status, error] = ({
+      NO_KEY: [503, setup], NO_PIN: [503, setup], NO_DB: [503, setup],
+      BAD_KEY: [503, 'Launching is not set up correctly: the launch wallet key is not valid.'],
+      FUNDS: [503, 'The launch wallet is out of ETH, so no coin can be created right now. Nothing was created.'],
+      PIN: [502, 'Could not store the GIF. Nothing was created. Try again.'],
+      TPL: [502, 'Could not read the launch settings from Pons. Nothing was created. Try again.'],
+      SIM: [422, e.message], TX: [500, e.message], SEND: [502, e.message + '. Nothing was created.'],
+    })[e.code] || [500, 'Could not launch. Nothing was created. Try again.'];
+    return bad(res, status, error);
   } finally {
     if (locked) await redis('DEL', 'gf:launch:lock').catch(() => {});
   }

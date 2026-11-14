@@ -31,11 +31,15 @@ const tokenLaunched = abi.find(x => x.type === 'event');
 
 const pub = () => createPublicClient({ chain, transport: http(RPC, { timeout: 15000 }) });
 function account() {
-  let k = (process.env.LAUNCH_PRIVATE_KEY || '').trim();
+  let k = (process.env.LAUNCH_PRIVATE_KEY || '').trim().replace(/^['"]+|['"]+$/g, '').trim();   // pasted with quotes is still fine
   if (!k) { const e = new Error('Launch wallet is not configured'); e.code = 'NO_KEY'; throw e; }
   if (!k.startsWith('0x')) k = '0x' + k;
-  return privateKeyToAccount(k);
+  const bad = why => { const e = new Error('Launch wallet key is not valid: ' + why); e.code = 'BAD_KEY'; return e; };
+  if (!/^0x[0-9a-fA-F]+$/.test(k)) throw bad('it is not a hex private key');
+  if (k.length !== 66) throw bad('a private key has 64 hex characters, this has ' + (k.length - 2));
+  try { return privateKeyToAccount(k); } catch { throw bad('the key was rejected'); }
 }
+const noFunds = m => /insufficient funds|exceeds the balance|insufficient balance/i.test(String(m));
 
 // Pons does not publish launchConfigId / expectedEconomics, so copy them from the most recent launch on chain.
 async function template(force) {
@@ -66,9 +70,11 @@ async function template(force) {
 }
 
 // Creates the token with no opening buy. Simulates first, so a revert costs nothing.
-async function launch({ name, symbol, logo, description, creatorTaxBps }) {
+// dry: stop after the simulation, so a check can run the whole path without sending anything.
+async function launch({ name, symbol, logo, description, creatorTaxBps }, dry) {
   const acct = account(), client = pub();
-  const t = await template();
+  let t;
+  try { t = await template(); } catch (e) { if (!e.code) e.code = 'TPL'; throw e; }
   // Prefer the fee the factory reports right now; fall back to the copied one.
   let value = BigInt(t.feeWei);
   try { value = await client.readContract({ address: FACTORY, abi: factoryReads, functionName: 'launchFee' }); } catch {}
@@ -82,9 +88,21 @@ async function launch({ name, symbol, logo, description, creatorTaxBps }) {
   const args = [params, BigInt(t.launchConfigId), t.pairToken];
   let sim;
   try { sim = await client.simulateContract({ account: acct, address: FACTORY, abi: launchAbi, functionName: 'launchToken', args, value }); }
-  catch (e) { await redis('DEL', 'gf:pons:tpl'); const x = new Error('Pons rejected the launch: ' + String(e.shortMessage || e.message).slice(0, 200)); x.code = 'SIM'; throw x; }
+  catch (e) {
+    const why = String(e.shortMessage || e.message).slice(0, 200);
+    if (noFunds(e.message) || noFunds(why)) { const x = new Error('The launch wallet does not have enough ETH'); x.code = 'FUNDS'; throw x; }
+    await redis('DEL', 'gf:pons:tpl').catch(() => {});
+    const x = new Error('Pons rejected the launch: ' + why); x.code = 'SIM'; throw x;
+  }
+  if (dry) return { dry: true, feeEth: formatEther(value), from: acct.address };
   const wallet = createWalletClient({ account: acct, chain, transport: http(RPC, { timeout: 15000 }) });
-  const hash = await wallet.writeContract(sim.request);
+  let hash;
+  try { hash = await wallet.writeContract(sim.request); }
+  catch (e) {
+    const why = String(e.shortMessage || e.message).slice(0, 200);
+    const x = new Error(noFunds(e.message) || noFunds(why) ? 'The launch wallet does not have enough ETH' : 'The chain did not accept the transaction: ' + why);
+    x.code = noFunds(e.message) || noFunds(why) ? 'FUNDS' : 'SEND'; throw x;
+  }
   let token = sim.result[0], curve = sim.result[1], confirmed = false;
   try {
     const r = await client.waitForTransactionReceipt({ hash, timeout: 40000 });
