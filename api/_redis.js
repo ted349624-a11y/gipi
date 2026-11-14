@@ -1,4 +1,7 @@
-// Minimal Upstash Redis REST client. The Vercel ↔ Upstash integration sets these variables.
+// Database client. Two kinds of connection, same commands and same results:
+// - a plain Redis connection string (redis:// or rediss://), as Redis Cloud and other Marketplace Redis providers set
+//   it (REDIS_URL, possibly with a prefix). Used first when present.
+// - the Upstash REST API (URL + token), as the Vercel <-> Upstash integration sets it.
 // The variable names can carry a custom prefix (e.g. STORAGE_KV_REST_API_URL), so match by ending.
 // URL and token are taken from the same prefix, so two connected databases can never be mixed into one broken pair.
 // With more than one connected, the first found is used: disconnect the old one in Vercel when switching.
@@ -11,10 +14,32 @@ for (const [u, t] of PAIRS) {
   const tk = k.slice(0, k.length - u.length) + t;
   if (process.env[tk]) { URL_ = process.env[k]; TOKEN = process.env[tk]; break; }
 }
-const configured = () => ({ url: !!URL_, token: !!TOKEN });
+// A Redis connection string, found by the end of the variable name so a custom prefix still works.
+const TCP_URL = (() => {
+  const k = Object.keys(process.env).find(n => /REDIS_URL$/.test(n) && /^rediss?:\/\//.test(process.env[n] || ''));
+  return k ? process.env[k] : '';
+})();
+const MODE = TCP_URL ? 'redis' : URL_ && TOKEN ? 'upstash-rest' : 'none';
+const configured = () => ({ url: MODE !== 'none', token: MODE !== 'none', mode: MODE });
+
+// One connection per warm function instance, opened on first use and reused after.
+let client = null, connecting = null;
+async function tcp() {
+  if (client && client.isReady) return client;
+  if (connecting) return connecting;
+  const { createClient } = require('redis');
+  const c = createClient({ url: TCP_URL, socket: { connectTimeout: 5000, reconnectStrategy: n => (n > 2 ? false : 200) } });
+  c.on('error', e => console.error('redis:', e.message));
+  connecting = c.connect().then(() => { client = c; connecting = null; return c; }, e => { connecting = null; throw e; });
+  return connecting;
+}
+const noDb = () => { const e = new Error('Database is not connected'); e.code = 'NO_DB'; return e; };
+// Redis wants every argument as a string.
+const args = cmd => cmd.map(x => (typeof x === 'string' ? x : String(x)));
 
 async function redis(...cmd) {
-  if (!URL_ || !TOKEN) { const e = new Error('Database is not connected'); e.code = 'NO_DB'; throw e; }
+  if (MODE === 'redis') return (await tcp()).sendCommand(args(cmd));
+  if (MODE === 'none') throw noDb();
   const r = await fetch(URL_, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
@@ -28,7 +53,12 @@ async function redis(...cmd) {
 // Several commands in one round trip. Returns the results in order.
 async function pipeline(cmds) {
   if (!cmds.length) return [];
-  if (!URL_ || !TOKEN) { const e = new Error('Database is not connected'); e.code = 'NO_DB'; throw e; }
+  if (MODE === 'redis') {
+    // Sent together, so they travel as one batch; a failed command gives undefined in its place, like the REST pipeline.
+    const c = await tcp();
+    return (await Promise.allSettled(cmds.map(x => c.sendCommand(args(x))))).map(r => (r.status === 'fulfilled' ? r.value : undefined));
+  }
+  if (MODE === 'none') throw noDb();
   const r = await fetch(URL_.replace(/\/$/, '') + '/pipeline', {
     method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(cmds)
   });
