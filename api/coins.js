@@ -10,6 +10,9 @@ const { market } = require('./_pons');
 const { allowed, active } = require('./_gate');
 
 const HOUR = 3600000, DAY = 24 * HOUR, TTL = 60;
+// The list starts at the move to the new launch wallet: coins launched before this moment stay in the database
+// but are not shown. LIST_SINCE in Vercel (a date such as 2026-11-14T14:30:00Z) moves the line.
+const SINCE = Date.parse(process.env.LIST_SINCE || '') || Date.UTC(2026, 10, 14, 14, 30);
 const toMap = a => { const m = {}; for (let i = 0; i < (a || []).length; i += 2) m[a[i]] = a[i + 1]; return m; };
 
 async function fetchUsd() {
@@ -43,7 +46,7 @@ module.exports = async (req, res) => {
     if (cached) return send(cached);
 
     const now = Date.now();
-    const [ids = [], usdCached, histRaw] = await pipeline([['ZREVRANGE', 'gf:coins:z', 0, 99], ['GET', 'gf:ethusd'], ['HGETALL', 'gf:hist']]);
+    const [ids = [], usdCached, histRaw] = await pipeline([['ZREVRANGEBYSCORE', 'gf:coins:z', '+inf', SINCE, 'LIMIT', 0, 100], ['GET', 'gf:ethusd'], ['HGETALL', 'gf:hist']]);
     const raw = ids.length ? await redis('HMGET', 'gf:coins', ...ids) : [];
     const all = raw.filter(Boolean).map(s => JSON.parse(s));
     let usd = Number(usdCached) || 0;
@@ -89,6 +92,10 @@ module.exports = async (req, res) => {
     if (liveIds.length) writes.push(['HSET', 'gf:mk', ...liveIds.flatMap(id => { const x = m[id]; return [id, JSON.stringify({ priceEth: x.priceEth, mcapEth: x.mcapEth, prog: x.prog, grad: x.grad, chg: x.chg })]; })]);
     if (histWrites.length) writes.push(['HSET', 'gf:hist', ...histWrites]);
     if (freshUsd) writes.push(['SET', 'gf:ethusd', String(freshUsd), 'EX', 300]);
+    // History of coins no longer listed is dropped, so the hash read on every refresh stays small.
+    const listed = new Set(all.map(c => c.token.toLowerCase()));
+    const gone = Object.keys(hist).filter(id => !listed.has(id));
+    if (gone.length) writes.push(['HDEL', 'gf:hist', ...gone]);
     await pipeline(writes).catch(e => console.error(e));
     return send(body);
   } catch (e) {
