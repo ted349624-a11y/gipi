@@ -1,13 +1,16 @@
 // Minimal Upstash Redis REST client. The Vercel ↔ Upstash integration sets these variables.
 // The variable names can carry a custom prefix (e.g. STORAGE_KV_REST_API_URL), so match by ending.
-const pick = (...ends) => {
-  for (const end of ends) {
-    const k = Object.keys(process.env).find(n => n.endsWith(end) && !n.includes('READ_ONLY') && process.env[n]);
-    if (k) return process.env[k];
-  }
-};
-const URL_ = pick('UPSTASH_REDIS_REST_URL', 'KV_REST_API_URL', 'REDIS_REST_URL', 'REST_API_URL');
-const TOKEN = pick('UPSTASH_REDIS_REST_TOKEN', 'KV_REST_API_TOKEN', 'REDIS_REST_TOKEN', 'REST_API_TOKEN');
+// URL and token are taken from the same prefix, so two connected databases can never be mixed into one broken pair.
+// With more than one connected, the first found is used: disconnect the old one in Vercel when switching.
+const PAIRS = [['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'], ['KV_REST_API_URL', 'KV_REST_API_TOKEN'],
+               ['REDIS_REST_URL', 'REDIS_REST_TOKEN'], ['REST_API_URL', 'REST_API_TOKEN']];
+let URL_, TOKEN;
+for (const [u, t] of PAIRS) {
+  const k = Object.keys(process.env).find(n => n.endsWith(u) && !n.includes('READ_ONLY') && process.env[n]);
+  if (!k) continue;
+  const tk = k.slice(0, k.length - u.length) + t;
+  if (process.env[tk]) { URL_ = process.env[k]; TOKEN = process.env[tk]; break; }
+}
 const configured = () => ({ url: !!URL_, token: !!TOKEN });
 
 async function redis(...cmd) {
